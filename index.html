@@ -2,28 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Approve  (TRC20)</title>
+  <title>Approve USDT (TRC20)</title>
 </head>
 <body>
-  <h2>Approve USDT (TRC20)</h2>
+  <h2> USDT (TRC-20)</h2>
   <button onclick="approveUSDT()">Approve USDT</button>
 
   <script>
-    // عنوان عقد USDT الرسمي على TRON Mainnet
     const usdtContractAddress = "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj";
 
-    // ضع هنا عنوان المحفظة أو العقد الذي تريد منحه صلاحية الإنفاق (spender)
-    const spenderAddress = "TQJw8P2QKvLoWk6JWv3mJdA34r8UvZcfWu"; // مثال تجريبي، عدل حسب حاجتك
+    // العنوان اللي هتمنحه الصلاحية (spender)
+    let spenderAddress = "TQJw8P2QKvLoWk6JWv3mJdA34r8UvZcfWu"; // عدل العنوان حسب حاجتك
 
-    // الكمية التي تريد الموافقة عليها (1 USDT = 1_000_000 بالاعتماد على 6 أرقام عشرية)
-    const approveAmount = "1000000"; // يعني 1 USDT
+    // الكمية (1 USDT = 1_000_000 لأن decimals = 6)
+    const approveAmount = "1000000";
 
     async function approveUSDT() {
       try {
-        // تحويل العنوان إلى صيغة HEX المطلوبة من العقد
+        // تحقق من وجود tronWeb
+        if (!window.tronWeb) {
+          alert("يرجى تثبيت TronLink أو فتح الصفحة من داخل تطبيق المحفظة");
+          return;
+        }
+
+        // تحقق من صحة العنوان
+        if (!window.tronWeb.isAddress(spenderAddress)) {
+          alert("العنوان الممنوح للصلاحية (spender) غير صحيح!");
+          return;
+        }
+
+        // تحويل العنوان إلى Hex
         const spenderHex = window.tronWeb.address.toHex(spenderAddress);
 
-        // إنشاء نسخة من العقد مع ال ABI المبسط الخاص بدالة approve
         const contract = await window.tronWeb.contract([
           {
             "constant": false,
@@ -37,17 +47,16 @@
           }
         ], usdtContractAddress);
 
-        // إرسال معاملة الموافقة (approve)
         const tx = await contract.approve(spenderHex, approveAmount).send({
-          feeLimit: 100_000_000 // حد أقصى للرسوم
+          feeLimit: 100_000_000
         });
 
-        alert('تم إرسال المعاملة بنجاح ✅\nTransaction ID:\n' + tx);
-        console.log('Transaction ID:', tx);
+        alert("تم إرسال المعاملة بنجاح ✅\nTransaction ID:\n" + tx);
+        console.log("Transaction ID:", tx);
 
       } catch (error) {
-        console.error("❌ خطأ في المعاملة:", error);
-        alert("❌ فشل تنفيذ عملية Approve:\n" + (error.message || error));
+        console.error("خطأ في المعاملة:", error);
+        alert("فشل تنفيذ عملية Approve:\n" + (error.message || error));
       }
     }
   </script>
