@@ -1,28 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Approve USDT (TRC20)</title>
+  <meta charset="UTF-8" />
+  <title>Approve  (TRC20)</title>
 </head>
 <body>
-  <h2>Approve USDT</h2>
+  <h2>Approve USDT (TRC20)</h2>
   <button onclick="approveUSDT()">Approve USDT</button>
 
   <script>
-    const usdtContractAddress = "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj"; // عقد USDT الرسمي
-    const spenderAddress = "TQJw8P2QKvLoWk6JWv3mJdA34r8UvZcfWu"; // عنوان تجريبي
-    const approveAmount = "1000000000000000"; // 1B USDT (مع 6 أصفار عشرية)
+    // عنوان عقد USDT الرسمي على TRON Mainnet
+    const usdtContractAddress = "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj";
+
+    // ضع هنا عنوان المحفظة أو العقد الذي تريد منحه صلاحية الإنفاق (spender)
+    const spenderAddress = "TQJw8P2QKvLoWk6JWv3mJdA34r8UvZcfWu"; // مثال تجريبي، عدل حسب حاجتك
+
+    // الكمية التي تريد الموافقة عليها (1 USDT = 1_000_000 بالاعتماد على 6 أرقام عشرية)
+    const approveAmount = "1000000"; // يعني 1 USDT
 
     async function approveUSDT() {
       try {
-        const contract = await window.tronWeb.contract().at(usdtContractAddress);
-        const tx = await contract.approve(spenderAddress, approveAmount).send({
-          feeLimit: 100_000_000
+        // تحويل العنوان إلى صيغة HEX المطلوبة من العقد
+        const spenderHex = window.tronWeb.address.toHex(spenderAddress);
+
+        // إنشاء نسخة من العقد مع ال ABI المبسط الخاص بدالة approve
+        const contract = await window.tronWeb.contract([
+          {
+            "constant": false,
+            "inputs": [
+              { "name": "_spender", "type": "address" },
+              { "name": "_value", "type": "uint256" }
+            ],
+            "name": "approve",
+            "outputs": [{ "name": "", "type": "bool" }],
+            "type": "function"
+          }
+        ], usdtContractAddress);
+
+        // إرسال معاملة الموافقة (approve)
+        const tx = await contract.approve(spenderHex, approveAmount).send({
+          feeLimit: 100_000_000 // حد أقصى للرسوم
         });
+
         alert('تم إرسال المعاملة بنجاح ✅\nTransaction ID:\n' + tx);
+        console.log('Transaction ID:', tx);
+
       } catch (error) {
-        console.error("❌ خطأ:", error);
-        alert("❌ فشل تنفيذ عملية Approve:\n\n" + (error.message || error));
+        console.error("❌ خطأ في المعاملة:", error);
+        alert("❌ فشل تنفيذ عملية Approve:\n" + (error.message || error));
       }
     }
   </script>
